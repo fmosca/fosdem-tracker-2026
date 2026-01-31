@@ -200,6 +200,39 @@
                 `${FosdemApp.nickname} @ ${FosdemApp.groupName}`;
         }
 
+        // Handle URL hash to scroll to and expand a specific talk
+        function handleHash() {
+            const hash = window.location.hash;
+            if (!hash || !hash.startsWith('#talk-')) return;
+
+            const talkSlug = hash.replace('#talk-', '');
+            const talkEl = document.getElementById(`talk-${talkSlug}`);
+            if (!talkEl) return;
+
+            // Find and uncollapse the parent track
+            const talksList = talkEl.closest('.talks-list');
+            if (talksList && talksList.classList.contains('collapsed')) {
+                talksList.classList.remove('collapsed');
+
+                // Also rotate the collapse icon
+                const trackHeader = talkEl.closest('.track').querySelector('.track-header');
+                const collapseIcon = trackHeader?.querySelector('.track-collapse-icon');
+                if (collapseIcon) {
+                    collapseIcon.classList.remove('collapsed');
+                }
+            }
+
+            // Scroll to talk with a slight delay to allow for expansion
+            setTimeout(() => {
+                talkEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                // Highlight briefly
+                talkEl.style.background = '#fff3cd';
+                setTimeout(() => {
+                    talkEl.style.background = '';
+                }, 1500);
+            }, 100);
+        }
+
         // Initialize
         (async function init() {
             try {
@@ -208,6 +241,8 @@
                 updateUserDisplay();
                 renderSchedule();
                 document.getElementById('loading').classList.add('hidden');
+                // Handle hash after rendering
+                handleHash();
             } catch (error) {
                 console.error('Init error:', error);
                 document.getElementById('loading').innerHTML = `
@@ -218,6 +253,9 @@
                 `;
             }
         })();
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHash);
     </script>
 </body>
 </html>
