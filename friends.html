@@ -128,9 +128,29 @@
 
         function showFriendTalks(uid, nickname) {
             selectedFriendUid = uid;
-            const talks = FosdemApp.getTalksForUser(uid);
-            const container = document.getElementById('friendTalksContainer');
 
+            // Get going talks
+            let talks = FosdemApp.getTalksForUser(uid);
+
+            // Add "here" talk if not already in the list
+            const hereStatus = typeof FosdemApp.getHereStatus === 'function'
+                ? FosdemApp.getHereStatus()
+                : {};
+            const hereSlug = hereStatus[uid];
+
+            if (hereSlug) {
+                const alreadyListed = talks.some(t => t.slug === hereSlug);
+                if (!alreadyListed) {
+                    const hereTalk = FosdemApp.getTalkBySlug(hereSlug);
+                    if (hereTalk) {
+                        // Add to the beginning with a flag
+                        hereTalk.isHere = true;
+                        talks.unshift(hereTalk);
+                    }
+                }
+            }
+
+            const container = document.getElementById('friendTalksContainer');
             renderFriends(); // Re-render to update active state
 
             container.innerHTML = `
@@ -146,7 +166,6 @@
                 </div>
             `;
 
-            // Scroll to talks
             container.scrollIntoView({ behavior: 'smooth' });
         }
 
@@ -157,15 +176,19 @@
         }
 
         function renderTalkCard(talk) {
+            const isHere = talk.isHere;
             const metaParts = [];
             if (talk.date) metaParts.push(`<span>${talk.date}</span>`);
             if (talk.start) metaParts.push(`<span>${talk.start}</span>`);
             if (talk.room) metaParts.push(`<span>${talk.room}</span>`);
 
             return `
-                <div class="talk">
+                <div class="talk ${isHere ? 'is-here' : ''}">
                     <div>
-                        <div class="talk-title">${talk.title}</div>
+                        <div class="talk-title">
+                            ${talk.title}
+                            ${isHere ? '<span class="here-badge">📍 Currently here</span>' : ''}
+                        </div>
                         <div class="talk-meta">${metaParts.join('')}</div>
                     </div>
                     <div class="talk-actions">

@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs18"
+  },
+  "database": {
+    "rules": "firebase-rules.json",
+    "rulesFiles": "firebase-rules.json"
+  }
+}

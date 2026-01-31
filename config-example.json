@@ -1,0 +1,10 @@
+{
+  "allowed_groups": [
+    "friends2026",
+    "colleagues",
+    "family"
+  ],
+  "max_users_per_group": 50,
+  "max_groups": 10,
+  "read_only": false
+}
