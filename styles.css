@@ -267,11 +267,33 @@ body {
     margin-bottom: 8px;
 }
 
+.talk-header-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
 .talk-title {
     font-weight: 600;
     font-size: 15px;
     color: var(--text);
     flex: 1;
+}
+
+.fosdem-link {
+    font-size: 11px;
+    color: var(--primary);
+    text-decoration: none;
+    white-space: nowrap;
+    padding: 2px 6px;
+    background: #e8f0fe;
+    border-radius: 4px;
+}
+
+.fosdem-link:hover {
+    background: #d2e3fc;
 }
 
 .talk-meta {

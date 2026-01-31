@@ -47,6 +47,7 @@
         function renderFriends() {
             const container = document.getElementById('friendsList');
             const friends = FosdemApp.getOtherUsers();
+            const hereStatus = FosdemApp.getHereStatus();
 
             if (friends.length === 0) {
                 container.innerHTML = `
@@ -59,6 +60,10 @@
                 return;
             }
 
+            // Get own "here" status
+            const myHereSlug = Object.keys(hereStatus).find(uid => uid === FosdemApp.currentUser?.uid);
+            const myHereTalk = myHereSlug ? FosdemApp.getTalkBySlug(hereStatus[myHereSlug]) : null;
+
             container.innerHTML = `
                 <h2 class="section-title">Group Members (${friends.length + 1})</h2>
                 <div class="friends-grid">
@@ -66,19 +71,24 @@
                         <div class="friend-avatar self">${FosdemApp.nickname.charAt(0).toUpperCase()}</div>
                         <div class="friend-info">
                             <div class="friend-name">${FosdemApp.nickname} (you)</div>
-                            <div class="friend-talk-count">${FosdemApp.getMyTalks().length} talks</div>
+                            <div class="friend-talk-count">${myHereTalk ? `📍 At "${myHereTalk.title}"` : `${FosdemApp.getMyTalks().length} talks planned`}</div>
                         </div>
                     </div>
                     ${friends.map(friend => {
                         const talkCount = FosdemApp.getTalksForUser(friend.uid).length;
                         const initial = friend.nickname.charAt(0).toUpperCase();
                         const isActive = selectedFriendUid === friend.uid;
+                        const hereSlug = hereStatus[friend.uid];
+                        const hereTalk = hereSlug ? FosdemApp.getTalkBySlug(hereSlug) : null;
+                        const statusText = hereTalk
+                            ? `📍 At "${hereTalk.title}"`
+                            : `${talkCount} talk${talkCount !== 1 ? 's' : ''} planned`;
                         return `
-                            <div class="friend-card ${isActive ? 'active' : ''}" onclick="showFriendTalks('${friend.uid}', '${friend.nickname.replace(/'/g, "\\'")}')">
+                            <div class="friend-card ${isActive ? 'active' : ''} ${hereTalk ? 'is-here' : ''}" onclick="showFriendTalks('${friend.uid}', '${friend.nickname.replace(/'/g, "\\'")}')">
                                 <div class="friend-avatar">${initial}</div>
                                 <div class="friend-info">
                                     <div class="friend-name">${friend.nickname}</div>
-                                    <div class="friend-talk-count">${talkCount} talk${talkCount !== 1 ? 's' : ''}</div>
+                                    <div class="friend-talk-count">${statusText}</div>
                                 </div>
                             </div>
                         `;

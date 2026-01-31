@@ -104,6 +104,15 @@
     border: 1px solid var(--primary);
 }
 
+.friend-card.is-here {
+    border-left: 4px solid var(--success);
+}
+
+.friend-card.is-here .friend-talk-count {
+    color: var(--success);
+    font-weight: 500;
+}
+
 .friend-avatar {
     width: 44px;
     height: 44px;

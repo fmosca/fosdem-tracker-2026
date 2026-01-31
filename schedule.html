@@ -58,7 +58,8 @@
         });
 
         function renderTalkCard(talk) {
-            const isGoing = FosdemApp.isUserAttending(talk.slug);
+            const isGoing = FosdemApp.isUserAttending(talk.slug, 'going');
+            const isHere = FosdemApp.isUserAttending(talk.slug, 'here');
             const metaParts = [];
             if (talk.date) metaParts.push(`<span>${talk.date}</span>`);
             if (talk.start) metaParts.push(`<span>${talk.start}</span>`);
@@ -67,15 +68,21 @@
 
             return `
                 <div class="talk" id="talk-${talk.slug}">
-                    <div>
+                    <div class="talk-header-main">
                         <div class="talk-title">${talk.title}</div>
-                        <div class="talk-meta">${metaParts.join('')}</div>
+                        ${talk.url ? `<a href="${talk.url}" target="_blank" rel="noopener" class="fosdem-link">fosdem.org ↗</a>` : ''}
                     </div>
+                    <div class="talk-meta">${metaParts.join('')}</div>
                     <div class="talk-actions">
                         <button class="action-btn going ${isGoing ? 'active' : ''}"
                                 onclick="toggleGoing('${talk.slug}')"
                                 id="going-btn-${talk.slug}">
                             <span>${isGoing ? '✓' : '➕'}</span> Going
+                        </button>
+                        <button class="action-btn here ${isHere ? 'active' : ''}"
+                                onclick="toggleHere('${talk.slug}')"
+                                id="here-btn-${talk.slug}">
+                            ${isHere ? '📍 Here' : '📍 I\'m Here'}
                         </button>
                     </div>
                     <div class="attendance-list" id="attendance-${talk.slug}"></div>
@@ -138,12 +145,30 @@
             }
         }
 
+        async function toggleHere(talkSlug) {
+            try {
+                await FosdemApp.toggleAttendance(talkSlug, 'here');
+                updateTalkButtonState(talkSlug);
+                updateAttendanceDisplay(talkSlug);
+            } catch (error) {
+                console.error('Error toggling here status:', error);
+            }
+        }
+
         function updateTalkButtonState(talkSlug) {
-            const btn = document.getElementById(`going-btn-${talkSlug}`);
-            if (btn) {
-                const isGoing = FosdemApp.isUserAttending(talkSlug);
-                btn.classList.toggle('active', isGoing);
-                btn.querySelector('span').textContent = isGoing ? '✓' : '➕';
+            const goingBtn = document.getElementById(`going-btn-${talkSlug}`);
+            const hereBtn = document.getElementById(`here-btn-${talkSlug}`);
+
+            if (goingBtn) {
+                const isGoing = FosdemApp.isUserAttending(talkSlug, 'going');
+                goingBtn.classList.toggle('active', isGoing);
+                goingBtn.querySelector('span').textContent = isGoing ? '✓' : '➕';
+            }
+
+            if (hereBtn) {
+                const isHere = FosdemApp.isUserAttending(talkSlug, 'here');
+                hereBtn.classList.toggle('active', isHere);
+                hereBtn.textContent = isHere ? '📍 Here' : "📍 I'm Here";
             }
         }
 

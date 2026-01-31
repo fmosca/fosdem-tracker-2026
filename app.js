@@ -263,8 +263,43 @@
         if (snapshot.exists()) {
             await ref.remove();
         } else {
+            // For "here" type, clear previous "here" first
+            if (type === 'here') {
+                await clearHereStatus();
+            }
             await ref.set(true);
         }
+    }
+
+    // Clear user's "here" status from all talks
+    async function clearHereStatus() {
+        if (!state.currentUser || !state.groupName) return;
+
+        const attendanceRef = getPath('attendance');
+        if (!attendanceRef) return;
+
+        const snapshot = await database.ref(attendanceRef).once('value');
+        const attendance = snapshot.val() || {};
+
+        for (const talkSlug in attendance) {
+            if (attendance[talkSlug]?.here?.[state.currentUser.uid]) {
+                await database.ref(`${attendanceRef}/${talkSlug}/here/${state.currentUser.uid}`).remove();
+            }
+        }
+    }
+
+    // Get all users who are "here" at talks
+    function getHereStatus() {
+        const hereStatus = {};
+        Object.keys(state.globalAttendance).forEach(talkSlug => {
+            const hereData = state.globalAttendance[talkSlug]?.here;
+            if (hereData) {
+                Object.keys(hereData).forEach(uid => {
+                    hereStatus[uid] = talkSlug;
+                });
+            }
+        });
+        return hereStatus;
     }
 
     // Check if current user is attending a talk
@@ -411,6 +446,20 @@
         return state.allUsers[uid]?.nickname || 'Anonymous';
     }
 
+    // Get talk details by slug
+    function getTalkBySlug(talkSlug) {
+        if (!state.scheduleData) return null;
+
+        for (const trackSlug in state.scheduleData) {
+            const track = state.scheduleData[trackSlug];
+            const talk = track.talks.find(t => t.slug === talkSlug);
+            if (talk) {
+                return { ...talk, trackName: track.name };
+            }
+        }
+        return null;
+    }
+
     // Get all users except current
     function getOtherUsers() {
         return Object.keys(state.allUsers)
@@ -507,7 +556,9 @@
         on,
         checkSavedSession,
         restoreSession,
-        findUserByNickname
+        findUserByNickname,
+        getHereStatus,
+        getTalkBySlug
     };
 
     window.FosdemApp = FosdemApp;
