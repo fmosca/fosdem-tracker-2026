@@ -243,10 +243,10 @@
                         <div class="track-header" onclick="toggleTrack('${trackSlug}')">
                             <div class="track-title">${track.name}</div>
                             <button class="track-toggle">
-                                <span class="track-collapse-icon" id="collapse-${trackSlug}">▼</span>
+                                <span class="track-collapse-icon collapsed" id="collapse-${trackSlug}">▼</span>
                             </button>
                         </div>
-                        <div class="talks-list" id="talks-${trackSlug}">
+                        <div class="talks-list collapsed" id="talks-${trackSlug}">
                             ${track.talks.map(talk => renderTalkCard(talk)).join('')}
                         </div>
                     </div>
