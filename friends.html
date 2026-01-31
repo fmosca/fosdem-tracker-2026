@@ -47,14 +47,17 @@
         function renderFriends() {
             const container = document.getElementById('friendsList');
             const friends = FosdemApp.getOtherUsers();
-            const hereStatus = FosdemApp.getHereStatus();
 
-            if (friends.length === 0) {
+            // Safely get here status
+            const hereStatus = typeof FosdemApp.getHereStatus === 'function'
+                ? FosdemApp.getHereStatus()
+                : {};
+
+            if (friends.length === 0 && !FosdemApp.currentUser) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">👥</div>
-                        <div class="empty-state-text">No other friends in this group</div>
-                        <div class="empty-state-sub">Share the group secret to invite others!</div>
+                        <div class="empty-state-text">No friends yet</div>
                     </div>
                 `;
                 return;
@@ -63,15 +66,18 @@
             // Get own "here" status
             const myHereSlug = Object.keys(hereStatus).find(uid => uid === FosdemApp.currentUser?.uid);
             const myHereTalk = myHereSlug ? FosdemApp.getTalkBySlug(hereStatus[myHereSlug]) : null;
+            const myTalkCount = FosdemApp.getMyTalks().length;
+            const isMeActive = selectedFriendUid === 'me' || selectedFriendUid === FosdemApp.currentUser?.uid;
 
             container.innerHTML = `
                 <h2 class="section-title">Group Members (${friends.length + 1})</h2>
                 <div class="friends-grid">
-                    <div class="friend-card">
+                    <div class="friend-card ${isMeActive ? 'active' : ''} ${myHereTalk ? 'is-here' : ''}"
+                         onclick="showMyPlan()">
                         <div class="friend-avatar self">${FosdemApp.nickname.charAt(0).toUpperCase()}</div>
                         <div class="friend-info">
                             <div class="friend-name">${FosdemApp.nickname} (you)</div>
-                            <div class="friend-talk-count">${myHereTalk ? `📍 At "${myHereTalk.title}"` : `${FosdemApp.getMyTalks().length} talks planned`}</div>
+                            <div class="friend-talk-count">${myHereTalk ? `📍 At "${myHereTalk.title}"` : `${myTalkCount} talk${myTalkCount !== 1 ? 's' : ''} planned`}</div>
                         </div>
                     </div>
                     ${friends.map(friend => {
@@ -95,6 +101,29 @@
                     }).join('')}
                 </div>
             `;
+        }
+
+        function showMyPlan() {
+            selectedFriendUid = 'me';
+            const talks = FosdemApp.getMyTalks();
+            const container = document.getElementById('friendTalksContainer');
+
+            renderFriends(); // Re-render to update active state
+
+            container.innerHTML = `
+                <div class="friend-talks-header">
+                    <button class="back-btn" onclick="clearFriend()">← Back to all friends</button>
+                    <h2>My Plan</h2>
+                    <div class="friend-talks-count">${talks.length} talk${talks.length !== 1 ? 's' : ''}</div>
+                </div>
+                <div class="track">
+                    <div class="talks-list">
+                        ${talks.map(talk => renderTalkCard(talk)).join('')}
+                    </div>
+                </div>
+            `;
+
+            container.scrollIntoView({ behavior: 'smooth' });
         }
 
         function showFriendTalks(uid, nickname) {
