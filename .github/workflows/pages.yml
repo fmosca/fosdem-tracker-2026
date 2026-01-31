@@ -32,10 +32,21 @@ jobs:
           # Create output directory
           mkdir -p _site
 
-          # Copy static files to _site/
-          cp index.html _site/
+          # Copy all HTML files
+          cp entry.html _site/
+          cp schedule.html _site/
+          cp myplan.html _site/
+          cp friends.html _site/
+
+          # Copy entry.html as index.html for root URL
+          cp entry.html _site/index.html
+
+          # Copy CSS and JS
           cp styles.css _site/
+          cp nav.css _site/
           cp app.js _site/
+
+          # Copy data files
           cp xml.xml _site/
           cp README.md _site/
           cp firebase-rules.json _site/

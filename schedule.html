@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOSDEM 2026 - Schedule</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="nav.css">
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-brand">FOSDEM 2026</div>
+        <div class="nav-user">
+            <span id="displayUser"></span>
+            <button class="nav-logout" onclick="doLogout()">Logout</button>
+        </div>
+    </nav>
+
+    <nav class="tab-nav">
+        <a href="schedule.html" class="tab-link active">📅 Schedule</a>
+        <a href="myplan.html" class="tab-link">⭐ My Plan</a>
+        <a href="friends.html" class="tab-link">👥 Friends</a>
+    </nav>
+
+    <div class="search-container">
+        <input type="text" class="search-input" id="searchInput" placeholder="Search talks...">
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div>Loading schedule...</div>
+    </div>
+
+    <main class="content" id="mainContent">
+        <div class="tracks-container" id="tracksContainer"></div>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Check login
+        if (!FosdemApp.checkSavedSession()) {
+            window.location.href = 'entry.html';
+        }
+
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                FosdemApp.setSearchQuery(e.target.value);
+                renderSchedule();
+            }, 300);
+        });
+
+        function renderTalkCard(talk) {
+            const isGoing = FosdemApp.isUserAttending(talk.slug);
+            const metaParts = [];
+            if (talk.date) metaParts.push(`<span>${talk.date}</span>`);
+            if (talk.start) metaParts.push(`<span>${talk.start}</span>`);
+            if (talk.duration) metaParts.push(`<span>${talk.duration}</span>`);
+            if (talk.room) metaParts.push(`<span>${talk.room}</span>`);
+
+            return `
+                <div class="talk" id="talk-${talk.slug}">
+                    <div>
+                        <div class="talk-title">${talk.title}</div>
+                        <div class="talk-meta">${metaParts.join('')}</div>
+                    </div>
+                    <div class="talk-actions">
+                        <button class="action-btn going ${isGoing ? 'active' : ''}"
+                                onclick="toggleGoing('${talk.slug}')"
+                                id="going-btn-${talk.slug}">
+                            <span>${isGoing ? '✓' : '➕'}</span> Going
+                        </button>
+                    </div>
+                    <div class="attendance-list" id="attendance-${talk.slug}"></div>
+                </div>
+            `;
+        }
+
+        function renderSchedule() {
+            const container = document.getElementById('tracksContainer');
+            const tracks = FosdemApp.getFilteredTalks();
+
+            if (Object.keys(tracks).length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <div class="empty-state-text">No talks found</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = Object.keys(tracks).map(trackSlug => {
+                const track = tracks[trackSlug];
+                return `
+                    <div class="track">
+                        <div class="track-header" onclick="toggleTrack('${trackSlug}')">
+                            <div class="track-title">${track.name}</div>
+                            <span class="track-collapse-icon collapsed" id="collapse-${trackSlug}">▼</span>
+                        </div>
+                        <div class="talks-list collapsed" id="talks-${trackSlug}">
+                            ${track.talks.map(talk => renderTalkCard(talk)).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update all buttons and attendance
+            Object.keys(tracks).forEach(trackSlug => {
+                tracks[trackSlug].talks.forEach(talk => {
+                    updateTalkButtonState(talk.slug);
+                    updateAttendanceDisplay(talk.slug);
+                });
+            });
+        }
+
+        function toggleTrack(trackSlug) {
+            const talksList = document.getElementById(`talks-${trackSlug}`);
+            const collapseIcon = document.getElementById(`collapse-${trackSlug}`);
+            talksList.classList.toggle('collapsed');
+            collapseIcon.classList.toggle('collapsed');
+        }
+
+        async function toggleGoing(talkSlug) {
+            try {
+                await FosdemApp.toggleAttendance(talkSlug, 'going');
+                updateTalkButtonState(talkSlug);
+                updateAttendanceDisplay(talkSlug);
+            } catch (error) {
+                console.error('Error toggling attendance:', error);
+            }
+        }
+
+        function updateTalkButtonState(talkSlug) {
+            const btn = document.getElementById(`going-btn-${talkSlug}`);
+            if (btn) {
+                const isGoing = FosdemApp.isUserAttending(talkSlug);
+                btn.classList.toggle('active', isGoing);
+                btn.querySelector('span').textContent = isGoing ? '✓' : '➕';
+            }
+        }
+
+        async function updateAttendanceDisplay(talkSlug) {
+            const container = document.getElementById(`attendance-${talkSlug}`);
+            if (!container) return;
+
+            const attendees = await FosdemApp.getAttendees(talkSlug, 'going');
+
+            if (attendees.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+
+            container.innerHTML = `
+                <span class="attendance-label">Going:</span>
+                <div class="attendance-tags">
+                    ${attendees.map(a => `<span class="attendance-tag">${a.nickname}</span>`).join('')}
+                </div>
+            `;
+        }
+
+        function doLogout() {
+            FosdemApp.logout();
+        }
+
+        function updateUserDisplay() {
+            document.getElementById('displayUser').textContent =
+                `${FosdemApp.nickname} @ ${FosdemApp.groupName}`;
+        }
+
+        // Initialize
+        (async function init() {
+            try {
+                await FosdemApp.loadSchedule();
+                await FosdemApp.restoreSession();
+                updateUserDisplay();
+                renderSchedule();
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">Error loading schedule</div>
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOSDEM 2026 - Friends</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="nav.css">
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-brand">FOSDEM 2026</div>
+        <div class="nav-user">
+            <span id="displayUser"></span>
+            <button class="nav-logout" onclick="doLogout()">Logout</button>
+        </div>
+    </nav>
+
+    <nav class="tab-nav">
+        <a href="schedule.html" class="tab-link">📅 Schedule</a>
+        <a href="myplan.html" class="tab-link">⭐ My Plan</a>
+        <a href="friends.html" class="tab-link active">👥 Friends</a>
+    </nav>
+
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div>Loading...</div>
+    </div>
+
+    <main class="content" id="mainContent">
+        <div id="friendsList"></div>
+        <div id="friendTalksContainer"></div>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if (!FosdemApp.checkSavedSession()) {
+            window.location.href = 'entry.html';
+        }
+
+        let selectedFriendUid = null;
+
+        function renderFriends() {
+            const container = document.getElementById('friendsList');
+            const friends = FosdemApp.getOtherUsers();
+
+            if (friends.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <div class="empty-state-text">No other friends in this group</div>
+                        <div class="empty-state-sub">Share the group secret to invite others!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <h2 class="section-title">Group Members (${friends.length + 1})</h2>
+                <div class="friends-grid">
+                    <div class="friend-card">
+                        <div class="friend-avatar self">${FosdemApp.nickname.charAt(0).toUpperCase()}</div>
+                        <div class="friend-info">
+                            <div class="friend-name">${FosdemApp.nickname} (you)</div>
+                            <div class="friend-talk-count">${FosdemApp.getMyTalks().length} talks</div>
+                        </div>
+                    </div>
+                    ${friends.map(friend => {
+                        const talkCount = FosdemApp.getTalksForUser(friend.uid).length;
+                        const initial = friend.nickname.charAt(0).toUpperCase();
+                        const isActive = selectedFriendUid === friend.uid;
+                        return `
+                            <div class="friend-card ${isActive ? 'active' : ''}" onclick="showFriendTalks('${friend.uid}', '${friend.nickname.replace(/'/g, "\\'")}')">
+                                <div class="friend-avatar">${initial}</div>
+                                <div class="friend-info">
+                                    <div class="friend-name">${friend.nickname}</div>
+                                    <div class="friend-talk-count">${talkCount} talk${talkCount !== 1 ? 's' : ''}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        function showFriendTalks(uid, nickname) {
+            selectedFriendUid = uid;
+            const talks = FosdemApp.getTalksForUser(uid);
+            const container = document.getElementById('friendTalksContainer');
+
+            renderFriends(); // Re-render to update active state
+
+            container.innerHTML = `
+                <div class="friend-talks-header">
+                    <button class="back-btn" onclick="clearFriend()">← Back to all friends</button>
+                    <h2>${nickname}'s Plan</h2>
+                    <div class="friend-talks-count">${talks.length} talk${talks.length !== 1 ? 's' : ''}</div>
+                </div>
+                <div class="track">
+                    <div class="talks-list">
+                        ${talks.map(talk => renderTalkCard(talk)).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Scroll to talks
+            container.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearFriend() {
+            selectedFriendUid = null;
+            document.getElementById('friendTalksContainer').innerHTML = '';
+            renderFriends();
+        }
+
+        function renderTalkCard(talk) {
+            const metaParts = [];
+            if (talk.date) metaParts.push(`<span>${talk.date}</span>`);
+            if (talk.start) metaParts.push(`<span>${talk.start}</span>`);
+            if (talk.room) metaParts.push(`<span>${talk.room}</span>`);
+
+            return `
+                <div class="talk">
+                    <div>
+                        <div class="talk-title">${talk.title}</div>
+                        <div class="talk-meta">${metaParts.join('')}</div>
+                    </div>
+                    <div class="talk-actions">
+                        <a href="schedule.html#talk-${talk.slug}" class="action-btn">View in Schedule</a>
+                    </div>
+                </div>
+            `;
+        }
+
+        function doLogout() {
+            FosdemApp.logout();
+        }
+
+        function updateUserDisplay() {
+            document.getElementById('displayUser').textContent =
+                `${FosdemApp.nickname} @ ${FosdemApp.groupName}`;
+        }
+
+        // Listen for updates
+        FosdemApp.on('onUsersUpdate', () => {
+            renderFriends();
+        });
+
+        FosdemApp.on('onAttendanceUpdate', () => {
+            renderFriends();
+            if (selectedFriendUid) {
+                const friend = FosdemApp.getOtherUsers().find(f => f.uid === selectedFriendUid);
+                if (friend) {
+                    showFriendTalks(selectedFriendUid, friend.nickname);
+                }
+            }
+        });
+
+        // Initialize
+        (async function init() {
+            try {
+                await FosdemApp.loadSchedule();
+                await FosdemApp.restoreSession();
+                updateUserDisplay();
+                renderFriends();
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">Error loading</div>
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+</html>

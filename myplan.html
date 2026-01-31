@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FOSDEM 2026 - My Plan</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="nav.css">
+</head>
+<body>
+    <nav class="nav-bar">
+        <div class="nav-brand">FOSDEM 2026</div>
+        <div class="nav-user">
+            <span id="displayUser"></span>
+            <button class="nav-logout" onclick="doLogout()">Logout</button>
+        </div>
+    </nav>
+
+    <nav class="tab-nav">
+        <a href="schedule.html" class="tab-link">📅 Schedule</a>
+        <a href="myplan.html" class="tab-link active">⭐ My Plan</a>
+        <a href="friends.html" class="tab-link">👥 Friends</a>
+    </nav>
+
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div>Loading...</div>
+    </div>
+
+    <main class="content" id="mainContent" class="hidden">
+        <div class="my-plan-header">
+            <div class="my-plan-count" id="myPlanCount">0</div>
+            <div class="my-plan-label">talks planned</div>
+        </div>
+        <div id="myPlanContainer"></div>
+    </main>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
+    <script src="app.js"></script>
+    <script>
+        if (!FosdemApp.checkSavedSession()) {
+            window.location.href = 'entry.html';
+        }
+
+        function renderTalkCard(talk) {
+            const isGoing = FosdemApp.isUserAttending(talk.slug);
+            const metaParts = [];
+            if (talk.date) metaParts.push(`<span>${talk.date}</span>`);
+            if (talk.start) metaParts.push(`<span>${talk.start}</span>`);
+            if (talk.duration) metaParts.push(`<span>${talk.duration}</span>`);
+            if (talk.room) metaParts.push(`<span>${talk.room}</span>`);
+
+            return `
+                <div class="talk" id="talk-${talk.slug}">
+                    <div>
+                        <div class="talk-title">${talk.title}</div>
+                        <div class="talk-meta">${metaParts.join('')}</div>
+                    </div>
+                    <div class="talk-actions">
+                        <button class="action-btn going ${isGoing ? 'active' : ''}"
+                                onclick="toggleGoing('${talk.slug}')"
+                                id="going-btn-${talk.slug}">
+                            <span>${isGoing ? '✓' : '✕'}</span> ${isGoing ? 'Going' : 'Remove'}
+                        </button>
+                    </div>
+                    <div class="attendance-list" id="attendance-${talk.slug}"></div>
+                </div>
+            `;
+        }
+
+        function renderMyPlan() {
+            const container = document.getElementById('myPlanContainer');
+            const talks = FosdemApp.getMyTalks();
+
+            document.getElementById('myPlanCount').textContent = talks.length;
+
+            if (talks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⭐</div>
+                        <div class="empty-state-text">No talks planned yet</div>
+                        <div class="empty-state-sub">
+                            <a href="schedule.html" class="text-link">Browse the schedule</a> and mark talks as "Going"
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="track">
+                    <div class="talks-list">
+                        ${talks.map(talk => renderTalkCard(talk)).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Update attendance displays
+            talks.forEach(talk => {
+                updateAttendanceDisplay(talk.slug);
+            });
+        }
+
+        async function toggleGoing(talkSlug) {
+            try {
+                await FosdemApp.toggleAttendance(talkSlug, 'going');
+                renderMyPlan();
+            } catch (error) {
+                console.error('Error toggling attendance:', error);
+            }
+        }
+
+        async function updateAttendanceDisplay(talkSlug) {
+            const container = document.getElementById(`attendance-${talkSlug}`);
+            if (!container) return;
+
+            const attendees = await FosdemApp.getAttendees(talkSlug, 'going');
+
+            if (attendees.length <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+
+            // Exclude self from count
+            const others = attendees.filter(a => a.uid !== FosdemApp.currentUser.uid);
+            container.innerHTML = `
+                <span class="attendance-label">+${others.length} other${others.length > 1 ? 's' : ''}</span>
+                <div class="attendance-tags">
+                    ${others.map(a => `<span class="attendance-tag">${a.nickname}</span>`).join('')}
+                </div>
+            `;
+        }
+
+        function doLogout() {
+            FosdemApp.logout();
+        }
+
+        function updateUserDisplay() {
+            document.getElementById('displayUser').textContent =
+                `${FosdemApp.nickname} @ ${FosdemApp.groupName}`;
+        }
+
+        // Listen for attendance changes
+        FosdemApp.on('onAttendanceUpdate', () => {
+            renderMyPlan();
+        });
+
+        // Initialize
+        (async function init() {
+            try {
+                await FosdemApp.loadSchedule();
+                await FosdemApp.restoreSession();
+                updateUserDisplay();
+                renderMyPlan();
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">Error loading</div>
+                    </div>
+                `;
+            }
+        })();
+    </script>
+</body>
+</html>
