@@ -34,6 +34,8 @@ jobs:
 
           # Copy static files to _site/
           cp index.html _site/
+          cp styles.css _site/
+          cp app.js _site/
           cp xml.xml _site/
           cp README.md _site/
           cp firebase-rules.json _site/

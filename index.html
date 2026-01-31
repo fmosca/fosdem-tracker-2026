@@ -2,338 +2,88 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>FOSDEM 2026 - Talk Tracker</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f5;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            display: flex;
-            gap: 20px;
-            height: 100vh;
-        }
-
-        .main-content {
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-
-        .sidebar {
-            width: 300px;
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            height: fit-content;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-            position: sticky;
-            top: 20px;
-        }
-
-        .sidebar-section {
-            margin-bottom: 25px;
-        }
-
-        .sidebar-title {
-            font-size: 14px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: #666;
-            margin-bottom: 12px;
-            padding-bottom: 5px;
-            border-bottom: 1px solid #eee;
-        }
-
-        .sidebar-item {
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.2s;
-            margin-bottom: 4px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .sidebar-item:hover {
-            background: #f0f0f0;
-        }
-
-        .sidebar-item.active {
-            background: #e8f0fe;
-            color: #1a73e8;
-            font-weight: 500;
-        }
-
-        header {
-            background: #fff;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .action-btn.here {
-            display: none;
-        }
-
-        .attendance-list .here {
-            display: none;
-        }
-
-        .clear-filter {
-            width: 100%;
-            margin-top: 10px;
-            padding: 8px;
-            background: #f8f9fa;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .clear-filter:hover {
-            background: #eee;
-        }
-
-        h1 {
-            color: #1a73e8;
-            margin-bottom: 10px;
-        }
-
-        .user-section {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .user-section input {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        .user-section button {
-            padding: 8px 16px;
-            background: #1a73e8;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .user-section button:hover {
-            background: #1557b0;
-        }
-
-        .current-user {
-            font-weight: 500;
-            color: #1a73e8;
-        }
-
-        .tracks-container {
-            display: grid;
-            gap: 20px;
-        }
-
-        .track {
-            background: #fff;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .track-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #1a73e8;
-        }
-
-        .track-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #1a73e8;
-        }
-
-        .track-toggle {
-            background: none;
-            border: none;
-            color: #666;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .track-toggle:hover {
-            color: #1a73e8;
-        }
-
-        .talks-list {
-            display: grid;
-            gap: 15px;
-        }
-
-        .talk {
-            padding: 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            background: #fafafa;
-        }
-
-        .talk-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: start;
-            margin-bottom: 10px;
-        }
-
-        .talk-title {
-            font-weight: 600;
-            font-size: 16px;
-            color: #333;
-            flex: 1;
-        }
-
-        .talk-meta {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-
-        .talk-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-
-        .action-btn {
-            padding: 6px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: white;
-            cursor: pointer;
-            font-size: 13px;
-            transition: all 0.2s;
-        }
-
-        .action-btn:hover {
-            background: #f0f0f0;
-        }
-
-        .action-btn.active {
-            background: #1a73e8;
-            color: white;
-            border-color: #1a73e8;
-        }
-
-        .action-btn.here {
-            background: #34a853;
-            color: white;
-            border-color: #34a853;
-        }
-
-        .attendance-list {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #666;
-        }
-
-        .attendance-list span {
-            display: inline-block;
-            margin-right: 8px;
-            padding: 2px 6px;
-            background: #e8f0fe;
-            border-radius: 3px;
-        }
-
-        .attendance-list .here {
-            background: #e6f4ea;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        .hidden {
-            display: none;
-        }
-
-        .filter-section {
-            background: #fff;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .filter-section input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container">
-        <aside class="sidebar hidden" id="sidebar">
-            <div class="sidebar-section">
-                <div class="sidebar-title">My Talks</div>
-                <div id="myTalksList"></div>
-            </div>
-            <div class="sidebar-section">
-                <div class="sidebar-title">Users</div>
-                <div id="usersList"></div>
-            </div>
-            <button class="clear-filter" onclick="clearAllFilters()">Show All Talks</button>
-        </aside>
+    <!-- Entry / Login View -->
+    <div id="entryView" class="view active">
+        <div class="entry-card">
+            <div class="entry-logo">🇧🇪</div>
+            <h1 class="entry-title">FOSDEM 2026</h1>
+            <p class="entry-subtitle">Coordinate with your group</p>
+            <form class="entry-form" id="entryForm">
+                <input type="text" class="entry-input" id="groupNameInput" placeholder="Group Password / Secret" maxlength="30" required>
+                <input type="text" class="entry-input" id="nicknameInput" placeholder="Your nickname" maxlength="20" required>
+                <button type="submit" class="btn-primary">Join Group</button>
+            </form>
+            <p id="entryError" class="error-message hidden"></p>
+        </div>
+    </div>
 
-        <main class="main-content">
-            <header>
-                <h1>FOSDEM 2026</h1>
-                <div class="user-section" id="userSection">
-                    <input type="text" id="groupNameInput" placeholder="Group Password / Secret" maxlength="30">
-                    <input type="text" id="nicknameInput" placeholder="Your nickname" maxlength="20">
-                    <button onclick="register()">Join Group</button>
-                    <div class="current-user hidden" id="currentUserInfo">
-                        <span id="currentUser"></span>
-                        <button onclick="logout()" style="background: #ea4335; margin-left: 10px;">Logout</button>
-                    </div>
+    <!-- Main App View -->
+    <div id="mainView" class="view">
+        <div class="main-area">
+            <header class="app-header">
+                <div class="app-title">FOSDEM 2026</div>
+                <div class="user-info">
+                    <span id="displayGroup">Group: -</span><br>
+                    <span id="displayUser">User: -</span>
+                    <button onclick="FosdemApp.logout()">Logout</button>
                 </div>
             </header>
 
-            <div class="filter-section">
-                <input type="text" id="searchInput" placeholder="Search talks..." oninput="filterBySearch()">
+            <!-- Search Bar (Schedule view only) -->
+            <div class="search-container" id="searchContainer">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search talks...">
             </div>
 
-            <div class="loading" id="loading">Loading schedule...</div>
-            <div class="tracks-container" id="tracksContainer"></div>
-        </main>
+            <!-- Loading State -->
+            <div class="loading hidden" id="loading">
+                <div class="loading-spinner"></div>
+                <div>Loading schedule...</div>
+            </div>
+
+            <!-- Schedule View -->
+            <div id="scheduleView" class="content view-section">
+                <div class="tracks-container" id="tracksContainer"></div>
+            </div>
+
+            <!-- My Plan View -->
+            <div id="myPlanView" class="content view-section hidden">
+                <div class="my-plan-header">
+                    <div class="my-plan-count" id="myPlanCount">0</div>
+                    <div class="my-plan-label">talks planned</div>
+                </div>
+                <div id="myPlanContainer"></div>
+            </div>
+
+            <!-- Friends View -->
+            <div id="friendsView" class="content view-section hidden">
+                <div class="friend-list" id="friendList"></div>
+                <button class="clear-filter-btn hidden" id="clearFriendFilter">Show All Friends</button>
+                <div id="friendTalksContainer"></div>
+            </div>
+        </div>
+
+        <!-- Tab Bar Navigation -->
+        <nav class="tab-bar">
+            <button class="tab active" data-view="schedule">
+                <span class="tab-icon">📅</span>
+                <span class="tab-label">Schedule</span>
+            </button>
+            <button class="tab" data-view="myplan">
+                <span class="tab-icon">⭐</span>
+                <span class="tab-label">My Plan</span>
+            </button>
+            <button class="tab" data-view="friends">
+                <span class="tab-icon">👥</span>
+                <span class="tab-label">Friends</span>
+            </button>
+        </nav>
     </div>
 
     <!-- Firebase SDKs -->
@@ -341,408 +91,361 @@
     <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-database-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/12.8.0/firebase-auth-compat.js"></script>
 
+    <!-- Application Module -->
+    <script src="app.js"></script>
+
+    <!-- View Logic -->
     <script>
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyAxaKYkC9fUPrTUomNLPxI8tkTka_Qyvq4",
-            authDomain: "fosdem-friends.firebaseapp.com",
-            databaseURL: "https://fosdem-friends-default-rtdb.europe-west1.firebasedatabase.app",
-            projectId: "fosdem-friends",
-            storageBucket: "fosdem-friends.firebasestorage.app",
-            messagingSenderId: "466631043889",
-            appId: "1:466631043889:web:5951bc2684f01c711e5e10"
+        // View Management
+        const views = {
+            entry: document.getElementById('entryView'),
+            main: document.getElementById('mainView')
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
-        const auth = firebase.auth();
+        const sections = {
+            schedule: document.getElementById('scheduleView'),
+            myplan: document.getElementById('myPlanView'),
+            friends: document.getElementById('friendsView')
+        };
 
-        let currentUser = null;
-        let groupName = null;
-        let scheduleData = null;
-        let talksByTrack = {};
-        
-        // Global state for sidebar
-        let allUsers = {};
-        let globalAttendance = {};
-        let currentFilter = { type: 'none', value: null };
+        const tabs = document.querySelectorAll('.tab');
 
-        // Helper to get DB paths
-        function getPath(subPath) {
-            if (!groupName) return null;
-            return `groups/${groupName}/${subPath}`;
-        }
-
-        // Load and parse XML schedule
-        async function loadSchedule() {
-            try {
-                const response = await fetch('xml.xml');
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-                
-                // Parse tracks
-                const tracks = {};
-                xmlDoc.querySelectorAll('track').forEach(track => {
-                    const slug = track.getAttribute('slug');
-                    const name = track.textContent.trim();
-                    tracks[slug] = { name, talks: [] };
-                });
-
-                // Parse events (they're nested inside <room> elements)
-                xmlDoc.querySelectorAll('event').forEach(event => {
-                    const slug = event.querySelector('slug')?.textContent.trim();
-                    const title = event.querySelector('title')?.textContent.trim();
-                    const trackEl = event.querySelector('track');
-                    const trackSlug = trackEl?.getAttribute('slug');
-                    const date = event.querySelector('date')?.textContent.trim();
-                    const start = event.querySelector('start')?.textContent.trim();
-                    const duration = event.querySelector('duration')?.textContent.trim();
-                    const room = event.querySelector('room')?.textContent.trim();
-                    const url = event.querySelector('url')?.textContent.trim();
-
-                    if (slug && title && trackSlug) {
-                        if (!tracks[trackSlug]) {
-                            const trackName = trackEl?.textContent.trim() || trackSlug;
-                            tracks[trackSlug] = { name: trackName, talks: [] };
-                        }
-                        
-                        tracks[trackSlug].talks.push({
-                            slug,
-                            title,
-                            date,
-                            start,
-                            duration,
-                            room,
-                            url
-                        });
-                    }
-                });
-
-                Object.keys(tracks).forEach(slug => {
-                    tracks[slug].talks.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-                });
-
-                scheduleData = tracks;
-                talksByTrack = tracks;
-                renderTracks();
-                document.getElementById('loading').classList.add('hidden');
-                
-                if (currentUser && groupName) {
-                    initApp();
-                }
-            } catch (error) {
-                console.error('Error loading schedule:', error);
-                document.getElementById('loading').textContent = 'Error loading schedule.';
-            }
-        }
-
-        function initApp() {
-            document.getElementById('sidebar').classList.remove('hidden');
-            attachGlobalListeners();
-            attachAttendanceListeners();
-        }
-
-        // Listen for all users and all attendance in the group
-        function attachGlobalListeners() {
-            // Watch all users in group
-            database.ref(getPath('users')).on('value', (snapshot) => {
-                allUsers = snapshot.val() || {};
-                renderSidebarUsers();
-            });
-
-            // Watch all attendance in group
-            database.ref(getPath('attendance')).on('value', (snapshot) => {
-                globalAttendance = snapshot.val() || {};
-                renderSidebarMyTalks();
-                applyFilters(); // Re-apply current user/talk filters when data changes
+        function showView(viewName) {
+            Object.keys(views).forEach(key => {
+                views[key].classList.toggle('active', key === viewName);
             });
         }
 
-        function renderSidebarUsers() {
-            const container = document.getElementById('usersList');
-            container.innerHTML = '';
-
-            Object.keys(allUsers).forEach(uid => {
-                if (uid === currentUser?.uid) return; 
-
-                const user = allUsers[uid];
-                const div = document.createElement('div');
-                div.className = `sidebar-item ${currentFilter.type === 'user' && currentFilter.value === uid ? 'active' : ''}`;
-                div.textContent = user.nickname || 'Anonymous';
-                div.onclick = () => filterByUser(uid);
-                container.appendChild(div);
-            });
-        }
-
-        function renderSidebarMyTalks() {
-            const container = document.getElementById('myTalksList');
-            container.innerHTML = '';
-
-            const myTalks = [];
-            Object.keys(globalAttendance).forEach(talkSlug => {
-                if (globalAttendance[talkSlug].going && globalAttendance[talkSlug].going[currentUser?.uid]) {
-                    let talkTitle = talkSlug;
-                    Object.values(scheduleData).some(track => {
-                        const talk = track.talks.find(t => t.slug === talkSlug);
-                        if (talk) {
-                            talkTitle = talk.title;
-                            return true;
-                        }
-                        return false;
-                    });
-                    myTalks.push({ slug: talkSlug, title: talkTitle });
-                }
+        function showSection(sectionName) {
+            Object.keys(sections).forEach(key => {
+                sections[key].classList.toggle('hidden', key !== sectionName);
             });
 
-            myTalks.forEach(talk => {
-                const div = document.createElement('div');
-                div.className = `sidebar-item ${currentFilter.type === 'talk' && currentFilter.value === talk.slug ? 'active' : ''}`;
-                div.textContent = talk.title;
-                div.onclick = () => filterByTalk(talk.slug);
-                container.appendChild(div);
-            });
-        }
-
-        function filterByUser(uid) {
-            currentFilter = { type: 'user', value: uid };
-            applyFilters();
-            renderSidebarUsers();
-            renderSidebarMyTalks();
-        }
-
-        function filterByTalk(talkSlug) {
-            currentFilter = { type: 'talk', value: talkSlug };
-            applyFilters();
-            renderSidebarUsers();
-            renderSidebarMyTalks();
-            
-            setTimeout(() => {
-                const el = document.getElementById(`talk-${talkSlug}`);
-                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 100);
-        }
-
-        function filterBySearch() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            currentFilter = searchTerm ? { type: 'search', value: searchTerm } : { type: 'none', value: null };
-            applyFilters();
-        }
-
-        function clearAllFilters() {
-            currentFilter = { type: 'none', value: null };
-            document.getElementById('searchInput').value = '';
-            applyFilters();
-            renderSidebarUsers();
-            renderSidebarMyTalks();
-        }
-
-        function applyFilters() {
-            if (!scheduleData) return;
-            const filtered = {};
-            Object.keys(scheduleData).forEach(trackSlug => {
-                const track = scheduleData[trackSlug];
-                const filteredTalks = track.talks.filter(talk => {
-                    if (currentFilter.type === 'none') return true;
-                    if (currentFilter.type === 'search') {
-                        return talk.title.toLowerCase().includes(currentFilter.value) || 
-                               talk.slug.toLowerCase().includes(currentFilter.value);
-                    }
-                    if (currentFilter.type === 'user') {
-                        return globalAttendance[talk.slug]?.going?.[currentFilter.value];
-                    }
-                    if (currentFilter.type === 'talk') {
-                        return talk.slug === currentFilter.value;
-                    }
-                    return true;
-                });
-
-                if (filteredTalks.length > 0) {
-                    filtered[trackSlug] = { name: track.name, talks: filteredTalks };
-                }
+            tabs.forEach(tab => {
+                tab.classList.toggle('active', tab.dataset.view === sectionName);
             });
 
-            talksByTrack = filtered;
-            renderTracks();
-            attachAttendanceListeners();
+            // Show/hide search bar
+            document.getElementById('searchContainer').classList.toggle('hidden', sectionName !== 'schedule');
+
+            FosdemApp.setCurrentView(sectionName);
         }
 
-        // Render tracks and talks
-        function renderTracks() {
-            const container = document.getElementById('tracksContainer');
-            container.innerHTML = '';
+        // Tab click handlers
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => showSection(tab.dataset.view));
+        });
 
-            Object.keys(talksByTrack).forEach(trackSlug => {
-                const track = talksByTrack[trackSlug];
-                const trackDiv = document.createElement('div');
-                trackDiv.className = 'track';
-                trackDiv.innerHTML = `
-                    <div class="track-header">
-                        <div class="track-title">${track.name}</div>
-                        <button class="track-toggle" onclick="toggleTrack(this)">Collapse</button>
-                    </div>
-                    <div class="talks-list">
-                        ${track.talks.map(talk => `
-                            <div class="talk" id="talk-${talk.slug}">
-                                <div class="talk-header">
-                                    <div class="talk-title">${talk.title}</div>
-                                    <div class="talk-meta">
-                                        ${talk.start ? ` • ${talk.start}` : ''} 
-                                        ${talk.room ? ` • ${talk.room}` : ''}
-                                    </div>
-                                </div>
-                                <div class="talk-actions">
-                                    <button class="action-btn going" onclick="toggleAttendance('${talk.slug}', 'going')" id="going-${talk.slug}">
-                                        Going
-                                    </button>
-                                </div>
-                                <div class="attendance-list" id="attendance-${talk.slug}"></div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                container.appendChild(trackDiv);
-            });
-        }
+        // Entry Form
+        const entryForm = document.getElementById('entryForm');
+        const entryError = document.getElementById('entryError');
 
-        function toggleTrack(btn) {
-            const talksList = btn.closest('.track').querySelector('.talks-list');
-            const isHidden = talksList.classList.contains('hidden');
-            talksList.classList.toggle('hidden');
-            btn.textContent = isHidden ? 'Collapse' : 'Expand';
-        }
+        entryForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
 
-        // Register/Join group
-        async function register() {
             const nickname = document.getElementById('nicknameInput').value.trim();
             const group = document.getElementById('groupNameInput').value.trim();
-            
-            if (!nickname || !group) {
-                alert('Please enter both a nickname and a group secret');
+
+            try {
+                await FosdemApp.register(nickname, group);
+                showMainApp();
+            } catch (error) {
+                entryError.textContent = error.message || 'Error joining group';
+                entryError.classList.remove('hidden');
+            }
+        });
+
+        function showMainApp() {
+            showView('main');
+            updateHeader();
+        }
+
+        function updateHeader() {
+            document.getElementById('displayGroup').textContent = `Group: ${FosdemApp.groupName}`;
+            document.getElementById('displayUser').textContent = `User: ${FosdemApp.nickname}`;
+        }
+
+        // Search
+        const searchInput = document.getElementById('searchInput');
+        let searchTimeout;
+
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                FosdemApp.setSearchQuery(e.target.value);
+                renderSchedule();
+            }, 300);
+        });
+
+        // ========== RENDER FUNCTIONS ==========
+
+        function renderSchedule() {
+            const container = document.getElementById('tracksContainer');
+            const tracks = FosdemApp.getFilteredTalks();
+
+            if (Object.keys(tracks).length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🔍</div>
+                        <div class="empty-state-text">No talks found</div>
+                        <div class="empty-state-sub">Try a different search term</div>
+                    </div>
+                `;
                 return;
             }
 
-            groupName = group;
-            localStorage.setItem('fosdem_group', group);
+            container.innerHTML = Object.keys(tracks).map(trackSlug => {
+                const track = tracks[trackSlug];
+                return `
+                    <div class="track">
+                        <div class="track-header" onclick="toggleTrack('${trackSlug}')">
+                            <div class="track-title">${track.name}</div>
+                            <button class="track-toggle">
+                                <span class="track-collapse-icon" id="collapse-${trackSlug}">▼</span>
+                            </button>
+                        </div>
+                        <div class="talks-list" id="talks-${trackSlug}">
+                            ${track.talks.map(talk => renderTalkCard(talk)).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
-            try {
-                if (!auth.currentUser) {
-                    const userCredential = await auth.signInAnonymously();
-                    currentUser = userCredential.user;
-                } else {
-                    currentUser = auth.currentUser;
-                }
-                
-                await database.ref(getPath(`users/${currentUser.uid}`)).set({
-                    nickname: nickname,
-                    lastSeen: firebase.database.ServerValue.TIMESTAMP
-                });
+            // Update button states
+            track.talks.forEach(talk => {
+                updateTalkButtonState(talk.slug);
+            });
+        }
 
-                updateUI(nickname);
-                initApp();
-            } catch (error) {
-                console.error('Error registering:', error);
-                alert('Error joining group.');
+        function renderTalkCard(talk) {
+            const isGoing = FosdemApp.isUserAttending(talk.slug);
+            const metaParts = [];
+            if (talk.date) metaParts.push(`<span>${talk.date}</span>`);
+            if (talk.start) metaParts.push(`<span>${talk.start}</span>`);
+            if (talk.duration) metaParts.push(`<span>${talk.duration}</span>`);
+            if (talk.room) metaParts.push(`<span>${talk.room}</span>`);
+
+            return `
+                <div class="talk" id="talk-${talk.slug}">
+                    <div>
+                        <div class="talk-header">
+                            <div class="talk-title">${talk.title}</div>
+                        </div>
+                        <div class="talk-meta">${metaParts.join('')}</div>
+                    </div>
+                    <div class="talk-actions">
+                        <button class="action-btn going ${isGoing ? 'active' : ''}"
+                                onclick="toggleGoing('${talk.slug}')"
+                                id="going-btn-${talk.slug}">
+                            <span>${isGoing ? '✓' : '➕'}</span> Going
+                        </button>
+                    </div>
+                    <div class="attendance-list" id="attendance-${talk.slug}"></div>
+                </div>
+            `;
+        }
+
+        function updateTalkButtonState(talkSlug) {
+            const btn = document.getElementById(`going-btn-${talkSlug}`);
+            if (btn) {
+                const isGoing = FosdemApp.isUserAttending(talkSlug);
+                btn.classList.toggle('active', isGoing);
+                btn.querySelector('span').textContent = isGoing ? '✓' : '➕';
             }
         }
 
-        function updateUI(nickname) {
-            document.getElementById('nicknameInput').classList.add('hidden');
-            document.getElementById('groupNameInput').classList.add('hidden');
-            document.querySelector('#userSection button').classList.add('hidden');
-            document.getElementById('currentUser').textContent = `Group: ${groupName} | User: ${nickname}`;
-            document.getElementById('currentUserInfo').classList.remove('hidden');
+        function toggleTrack(trackSlug) {
+            const talksList = document.getElementById(`talks-${trackSlug}`);
+            const collapseIcon = document.getElementById(`collapse-${trackSlug}`);
+
+            talksList.classList.toggle('collapsed');
+            collapseIcon.classList.toggle('collapsed');
         }
 
-        function logout() {
-            localStorage.removeItem('fosdem_group');
-            window.location.reload();
+        async function toggleGoing(talkSlug) {
+            try {
+                await FosdemApp.toggleAttendance(talkSlug, 'going');
+                updateTalkButtonState(talkSlug);
+                updateAttendanceDisplay(talkSlug);
+                updateMyPlanCount();
+            } catch (error) {
+                console.error('Error toggling attendance:', error);
+            }
         }
 
-        // Attach real-time listeners for attendance
-        function attachAttendanceListeners() {
-            if (!currentUser || !groupName) return;
-
-            Object.keys(talksByTrack).forEach(trackSlug => {
-                talksByTrack[trackSlug].talks.forEach(talk => {
-                    const goingRef = database.ref(getPath(`attendance/${talk.slug}/going`));
-                    goingRef.off();
-                    goingRef.on('value', (snapshot) => {
-                        updateAttendanceDisplay(talk.slug, 'going', snapshot.val());
-                    });
-                    checkUserAttendance(talk.slug);
-                });
-            });
-        }
-
-        // Check user's current attendance status
-        function checkUserAttendance(talkSlug) {
-            if (!currentUser || !groupName) return;
-            database.ref(getPath(`attendance/${talkSlug}/going/${currentUser.uid}`)).once('value', (snapshot) => {
-                const btn = document.getElementById(`going-${talkSlug}`);
-                if (btn) btn.classList.toggle('active', snapshot.exists());
-            });
-        }
-
-        // Update attendance display
-        async function updateAttendanceDisplay(talkSlug, type, data) {
+        async function updateAttendanceDisplay(talkSlug) {
             const container = document.getElementById(`attendance-${talkSlug}`);
             if (!container) return;
 
-            const goingData = data || {};
-            let html = '';
+            const attendees = await FosdemApp.getAttendees(talkSlug, 'going');
 
-            if (Object.keys(goingData).length > 0) {
-                const userIds = Object.keys(goingData);
-                const nicknames = await Promise.all(
-                    userIds.map(async (uid) => {
-                        const userSnap = await database.ref(getPath(`users/${uid}/nickname`)).once('value');
-                        return userSnap.val() || 'Anonymous';
-                    })
-                );
-                const display = nicknames.map(name => `<span class="going">${name}</span>`).join('');
-                html += `<strong>Going:</strong> ${display} `;
-            }
-            container.innerHTML = html;
-        }
-
-        // Toggle attendance
-        async function toggleAttendance(talkSlug, type) {
-            if (!currentUser || !groupName) {
-                alert('Please join a group first');
+            if (attendees.length === 0) {
+                container.innerHTML = '';
                 return;
             }
 
-            const ref = database.ref(getPath(`attendance/${talkSlug}/${type}/${currentUser.uid}`));
-            const snapshot = await ref.once('value');
-            if (snapshot.exists()) {
-                await ref.remove();
-            } else {
-                await ref.set(true);
-            }
+            container.innerHTML = `
+                <span class="attendance-label">Going:</span>
+                <div class="attendance-tags">
+                    ${attendees.map(a => `<span class="attendance-tag">${a.nickname}</span>`).join('')}
+                </div>
+            `;
         }
 
-        // Auth state change
-        auth.onAuthStateChanged((user) => {
+        function updateMyPlanCount() {
+            const count = FosdemApp.getMyTalks().length;
+            document.getElementById('myPlanCount').textContent = count;
+        }
+
+        function renderMyPlan() {
+            const container = document.getElementById('myPlanContainer');
+            const talks = FosdemApp.getMyTalks();
+
+            updateMyPlanCount();
+
+            if (talks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⭐</div>
+                        <div class="empty-state-text">No talks planned yet</div>
+                        <div class="empty-state-sub">Browse the schedule and mark talks as "Going"</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="track">
+                    <div class="talks-list">
+                        ${talks.map(talk => renderTalkCard(talk)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFriends() {
+            const container = document.getElementById('friendList');
+            const friends = FosdemApp.getOtherUsers();
+
+            if (friends.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">👥</div>
+                        <div class="empty-state-text">No other friends in this group</div>
+                        <div class="empty-state-sub">Share the group secret to invite others!</div>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = friends.map(friend => {
+                const talkCount = FosdemApp.getTalksForUser(friend.uid).length;
+                const initial = friend.nickname.charAt(0).toUpperCase();
+
+                return `
+                    <div class="friend-item" onclick="showFriendTalks('${friend.uid}', '${friend.nickname}')">
+                        <div class="friend-info">
+                            <div class="friend-avatar">${initial}</div>
+                            <div class="friend-name">${friend.nickname}</div>
+                        </div>
+                        <div class="friend-talk-count">${talkCount}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showFriendTalks(uid, nickname) {
+            FosdemApp.setFilter('user', uid);
+            const talks = FosdemApp.getTalksForUser(uid);
+            const container = document.getElementById('friendTalksContainer');
+
+            document.getElementById('clearFriendFilter').classList.remove('hidden');
+            document.querySelectorAll('.friend-item').forEach(item => item.classList.remove('active'));
+
+            container.innerHTML = `
+                <div class="my-plan-header">
+                    <div class="my-plan-count">${nickname}</div>
+                    <div class="my-plan-label">${talks.length} talks planned</div>
+                </div>
+                <div class="track">
+                    <div class="talks-list">
+                        ${talks.map(talk => renderTalkCard(talk)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        document.getElementById('clearFriendFilter').addEventListener('click', () => {
+            FosdemApp.clearFilter();
+            document.getElementById('clearFriendFilter').classList.add('hidden');
+            document.getElementById('friendTalksContainer').innerHTML = '';
+            document.querySelectorAll('.friend-item').forEach(item => item.classList.remove('active'));
+            renderFriends();
+        });
+
+        // ========== APP INITIALIZATION ==========
+
+        // Register app callbacks
+        FosdemApp.on('onScheduleLoaded', () => {
+            document.getElementById('loading').classList.add('hidden');
+            renderSchedule();
+            renderMyPlan();
+            renderFriends();
+        });
+
+        FosdemApp.on('onAttendanceUpdate', () => {
+            if (FosdemApp.currentView === 'schedule') {
+                renderSchedule();
+            } else if (FosdemApp.currentView === 'myplan') {
+                renderMyPlan();
+            } else if (FosdemApp.currentView === 'friends') {
+                renderFriends();
+            }
+            updateMyPlanCount();
+        });
+
+        FosdemApp.on('onUsersUpdate', () => {
+            renderFriends();
+        });
+
+        FosdemApp.on('onViewChange', (view) => {
+            if (view === 'schedule') {
+                renderSchedule();
+            } else if (view === 'myplan') {
+                renderMyPlan();
+            } else if (view === 'friends') {
+                renderFriends();
+            }
+        });
+
+        FosdemApp.on('onAuthStateChange', async (user) => {
             if (user) {
-                currentUser = user;
-                const savedGroup = localStorage.getItem('fosdem_group');
+                const savedGroup = FosdemApp.checkSavedSession();
                 if (savedGroup) {
-                    groupName = savedGroup;
-                    database.ref(getPath(`users/${user.uid}/nickname`)).once('value', (snapshot) => {
-                        const nickname = snapshot.val();
-                        if (nickname) {
-                            updateUI(nickname);
-                            if (scheduleData) initApp();
-                        }
-                    });
+                    const session = await FosdemApp.restoreSession();
+                    if (session) {
+                        showMainApp();
+                    }
                 }
             }
         });
 
         // Initialize
-        loadSchedule();
+        (async function init() {
+            document.getElementById('loading').classList.remove('hidden');
+
+            try {
+                await FosdemApp.loadSchedule();
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                document.getElementById('loading').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <div class="empty-state-text">Error loading schedule</div>
+                    </div>
+                `;
+            }
+        })();
     </script>
 </body>
 </html>
