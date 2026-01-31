@@ -253,9 +253,12 @@
                 `;
             }).join('');
 
-            // Update button states
-            track.talks.forEach(talk => {
-                updateTalkButtonState(talk.slug);
+            // Update button states for all talks
+            Object.keys(tracks).forEach(trackSlug => {
+                tracks[trackSlug].talks.forEach(talk => {
+                    updateTalkButtonState(talk.slug);
+                    updateAttendanceDisplay(talk.slug);
+                });
             });
         }
 
