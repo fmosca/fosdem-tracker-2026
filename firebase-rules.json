@@ -1,0 +1,22 @@
+{
+  "rules": {
+    "groups": {
+      "$groupName": {
+        // Only allow reading/writing within a group
+        // If you don't know the $groupName, you can't list the data
+        ".read": "auth != null",
+        ".write": "auth != null",
+        "users": {
+          "$uid": {
+            ".write": "auth != null && auth.uid == $uid"
+          }
+        },
+        "attendance": {
+          "$talkSlug": {
+            ".write": "auth != null"
+          }
+        }
+      }
+    }
+  }
+}
