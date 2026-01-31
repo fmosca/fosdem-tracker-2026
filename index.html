@@ -19,17 +19,98 @@
         }
 
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
             padding: 20px;
+            display: flex;
+            gap: 20px;
+            height: 100vh;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: fit-content;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+            position: sticky;
+            top: 20px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 25px;
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 12px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .sidebar-item {
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .sidebar-item:hover {
+            background: #f0f0f0;
+        }
+
+        .sidebar-item.active {
+            background: #e8f0fe;
+            color: #1a73e8;
+            font-weight: 500;
         }
 
         header {
             background: #fff;
-            padding: 20px;
+            padding: 15px 20px;
             border-radius: 8px;
             margin-bottom: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .action-btn.here {
+            display: none;
+        }
+
+        .attendance-list .here {
+            display: none;
+        }
+
+        .clear-filter {
+            width: 100%;
+            margin-top: 10px;
+            padding: 8px;
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .clear-filter:hover {
+            background: #eee;
         }
 
         h1 {
@@ -220,25 +301,39 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>FOSDEM 2026 - Talk Tracker</h1>
-            <div class="user-section" id="userSection">
-                <input type="text" id="groupNameInput" placeholder="Group Password / Secret" maxlength="30">
-                <input type="text" id="nicknameInput" placeholder="Your nickname" maxlength="20">
-                <button onclick="register()">Join Group</button>
-                <div class="current-user hidden" id="currentUserInfo">
-                    <span id="currentUser"></span>
-                    <button onclick="logout()" style="background: #ea4335; margin-left: 10px;">Logout</button>
-                </div>
+        <aside class="sidebar hidden" id="sidebar">
+            <div class="sidebar-section">
+                <div class="sidebar-title">My Talks</div>
+                <div id="myTalksList"></div>
             </div>
-        </header>
+            <div class="sidebar-section">
+                <div class="sidebar-title">Users</div>
+                <div id="usersList"></div>
+            </div>
+            <button class="clear-filter" onclick="clearAllFilters()">Show All Talks</button>
+        </aside>
 
-        <div class="filter-section">
-            <input type="text" id="searchInput" placeholder="Search talks..." oninput="filterTalks()">
-        </div>
+        <main class="main-content">
+            <header>
+                <h1>FOSDEM 2026</h1>
+                <div class="user-section" id="userSection">
+                    <input type="text" id="groupNameInput" placeholder="Group Password / Secret" maxlength="30">
+                    <input type="text" id="nicknameInput" placeholder="Your nickname" maxlength="20">
+                    <button onclick="register()">Join Group</button>
+                    <div class="current-user hidden" id="currentUserInfo">
+                        <span id="currentUser"></span>
+                        <button onclick="logout()" style="background: #ea4335; margin-left: 10px;">Logout</button>
+                    </div>
+                </div>
+            </header>
 
-        <div class="loading" id="loading">Loading schedule...</div>
-        <div class="tracks-container" id="tracksContainer"></div>
+            <div class="filter-section">
+                <input type="text" id="searchInput" placeholder="Search talks..." oninput="filterBySearch()">
+            </div>
+
+            <div class="loading" id="loading">Loading schedule...</div>
+            <div class="tracks-container" id="tracksContainer"></div>
+        </main>
     </div>
 
     <!-- Firebase SDKs -->
@@ -267,6 +362,11 @@
         let groupName = null;
         let scheduleData = null;
         let talksByTrack = {};
+        
+        // Global state for sidebar
+        let allUsers = {};
+        let globalAttendance = {};
+        let currentFilter = { type: 'none', value: null };
 
         // Helper to get DB paths
         function getPath(subPath) {
@@ -303,7 +403,6 @@
                     const url = event.querySelector('url')?.textContent.trim();
 
                     if (slug && title && trackSlug) {
-                        // Create track if it doesn't exist (fallback)
                         if (!tracks[trackSlug]) {
                             const trackName = trackEl?.textContent.trim() || trackSlug;
                             tracks[trackSlug] = { name: trackName, talks: [] };
@@ -321,13 +420,8 @@
                     }
                 });
 
-                // Sort talks by date/time
                 Object.keys(tracks).forEach(slug => {
-                    tracks[slug].talks.sort((a, b) => {
-                        const dateA = a.date || '';
-                        const dateB = b.date || '';
-                        return dateA.localeCompare(dateB);
-                    });
+                    tracks[slug].talks.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
                 });
 
                 scheduleData = tracks;
@@ -335,14 +429,143 @@
                 renderTracks();
                 document.getElementById('loading').classList.add('hidden');
                 
-                // Attach listeners if user is already authenticated
                 if (currentUser && groupName) {
-                    attachAttendanceListeners();
+                    initApp();
                 }
             } catch (error) {
                 console.error('Error loading schedule:', error);
-                document.getElementById('loading').textContent = 'Error loading schedule. Make sure xml.xml is in the same directory.';
+                document.getElementById('loading').textContent = 'Error loading schedule.';
             }
+        }
+
+        function initApp() {
+            document.getElementById('sidebar').classList.remove('hidden');
+            attachGlobalListeners();
+            attachAttendanceListeners();
+        }
+
+        // Listen for all users and all attendance in the group
+        function attachGlobalListeners() {
+            // Watch all users in group
+            database.ref(getPath('users')).on('value', (snapshot) => {
+                allUsers = snapshot.val() || {};
+                renderSidebarUsers();
+            });
+
+            // Watch all attendance in group
+            database.ref(getPath('attendance')).on('value', (snapshot) => {
+                globalAttendance = snapshot.val() || {};
+                renderSidebarMyTalks();
+                applyFilters(); // Re-apply current user/talk filters when data changes
+            });
+        }
+
+        function renderSidebarUsers() {
+            const container = document.getElementById('usersList');
+            container.innerHTML = '';
+
+            Object.keys(allUsers).forEach(uid => {
+                if (uid === currentUser?.uid) return; 
+
+                const user = allUsers[uid];
+                const div = document.createElement('div');
+                div.className = `sidebar-item ${currentFilter.type === 'user' && currentFilter.value === uid ? 'active' : ''}`;
+                div.textContent = user.nickname || 'Anonymous';
+                div.onclick = () => filterByUser(uid);
+                container.appendChild(div);
+            });
+        }
+
+        function renderSidebarMyTalks() {
+            const container = document.getElementById('myTalksList');
+            container.innerHTML = '';
+
+            const myTalks = [];
+            Object.keys(globalAttendance).forEach(talkSlug => {
+                if (globalAttendance[talkSlug].going && globalAttendance[talkSlug].going[currentUser?.uid]) {
+                    let talkTitle = talkSlug;
+                    Object.values(scheduleData).some(track => {
+                        const talk = track.talks.find(t => t.slug === talkSlug);
+                        if (talk) {
+                            talkTitle = talk.title;
+                            return true;
+                        }
+                        return false;
+                    });
+                    myTalks.push({ slug: talkSlug, title: talkTitle });
+                }
+            });
+
+            myTalks.forEach(talk => {
+                const div = document.createElement('div');
+                div.className = `sidebar-item ${currentFilter.type === 'talk' && currentFilter.value === talk.slug ? 'active' : ''}`;
+                div.textContent = talk.title;
+                div.onclick = () => filterByTalk(talk.slug);
+                container.appendChild(div);
+            });
+        }
+
+        function filterByUser(uid) {
+            currentFilter = { type: 'user', value: uid };
+            applyFilters();
+            renderSidebarUsers();
+            renderSidebarMyTalks();
+        }
+
+        function filterByTalk(talkSlug) {
+            currentFilter = { type: 'talk', value: talkSlug };
+            applyFilters();
+            renderSidebarUsers();
+            renderSidebarMyTalks();
+            
+            setTimeout(() => {
+                const el = document.getElementById(`talk-${talkSlug}`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        }
+
+        function filterBySearch() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            currentFilter = searchTerm ? { type: 'search', value: searchTerm } : { type: 'none', value: null };
+            applyFilters();
+        }
+
+        function clearAllFilters() {
+            currentFilter = { type: 'none', value: null };
+            document.getElementById('searchInput').value = '';
+            applyFilters();
+            renderSidebarUsers();
+            renderSidebarMyTalks();
+        }
+
+        function applyFilters() {
+            if (!scheduleData) return;
+            const filtered = {};
+            Object.keys(scheduleData).forEach(trackSlug => {
+                const track = scheduleData[trackSlug];
+                const filteredTalks = track.talks.filter(talk => {
+                    if (currentFilter.type === 'none') return true;
+                    if (currentFilter.type === 'search') {
+                        return talk.title.toLowerCase().includes(currentFilter.value) || 
+                               talk.slug.toLowerCase().includes(currentFilter.value);
+                    }
+                    if (currentFilter.type === 'user') {
+                        return globalAttendance[talk.slug]?.going?.[currentFilter.value];
+                    }
+                    if (currentFilter.type === 'talk') {
+                        return talk.slug === currentFilter.value;
+                    }
+                    return true;
+                });
+
+                if (filteredTalks.length > 0) {
+                    filtered[trackSlug] = { name: track.name, talks: filteredTalks };
+                }
+            });
+
+            talksByTrack = filtered;
+            renderTracks();
+            attachAttendanceListeners();
         }
 
         // Render tracks and talks
@@ -352,8 +575,6 @@
 
             Object.keys(talksByTrack).forEach(trackSlug => {
                 const track = talksByTrack[trackSlug];
-                if (track.talks.length === 0) return;
-
                 const trackDiv = document.createElement('div');
                 trackDiv.className = 'track';
                 trackDiv.innerHTML = `
@@ -362,87 +583,34 @@
                         <button class="track-toggle" onclick="toggleTrack(this)">Collapse</button>
                     </div>
                     <div class="talks-list">
-                        ${track.talks.map(talk => renderTalk(talk, trackSlug)).join('')}
+                        ${track.talks.map(talk => `
+                            <div class="talk" id="talk-${talk.slug}">
+                                <div class="talk-header">
+                                    <div class="talk-title">${talk.title}</div>
+                                    <div class="talk-meta">
+                                        ${talk.start ? ` • ${talk.start}` : ''} 
+                                        ${talk.room ? ` • ${talk.room}` : ''}
+                                    </div>
+                                </div>
+                                <div class="talk-actions">
+                                    <button class="action-btn going" onclick="toggleAttendance('${talk.slug}', 'going')" id="going-${talk.slug}">
+                                        Going
+                                    </button>
+                                </div>
+                                <div class="attendance-list" id="attendance-${talk.slug}"></div>
+                            </div>
+                        `).join('')}
                     </div>
                 `;
                 container.appendChild(trackDiv);
             });
         }
 
-        // Render individual talk
-        function renderTalk(talk, trackSlug) {
-            const talkId = `talk-${talk.slug}`;
-            return `
-                <div class="talk" id="${talkId}" data-slug="${talk.slug}" data-title="${talk.title.toLowerCase()}">
-                    <div class="talk-header">
-                        <div>
-                            <div class="talk-title">${talk.title}</div>
-                            <div class="talk-meta">
-                                ${talk.date ? new Date(talk.date).toLocaleString() : ''} 
-                                ${talk.start ? ` • ${talk.start}` : ''} 
-                                ${talk.duration ? ` • ${talk.duration}` : ''}
-                                ${talk.room ? ` • ${talk.room}` : ''}
-                            </div>
-                        </div>
-                    </div>
-                    <div class="talk-actions">
-                        <button class="action-btn going" onclick="toggleAttendance('${talk.slug}', 'going')" id="going-${talk.slug}">
-                            Going
-                        </button>
-                        <button class="action-btn here" onclick="toggleAttendance('${talk.slug}', 'here')" id="here-${talk.slug}">
-                            Here
-                        </button>
-                    </div>
-                    <div class="attendance-list" id="attendance-${talk.slug}"></div>
-                </div>
-            `;
-        }
-
-        // Toggle track collapse
         function toggleTrack(btn) {
-            const track = btn.closest('.track');
-            const talksList = track.querySelector('.talks-list');
+            const talksList = btn.closest('.track').querySelector('.talks-list');
             const isHidden = talksList.classList.contains('hidden');
-            
-            if (isHidden) {
-                talksList.classList.remove('hidden');
-                btn.textContent = 'Collapse';
-            } else {
-                talksList.classList.add('hidden');
-                btn.textContent = 'Expand';
-            }
-        }
-
-        // Filter talks by search
-        function filterTalks() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            
-            if (!searchTerm) {
-                talksByTrack = scheduleData;
-                renderTracks();
-                attachAttendanceListeners();
-                return;
-            }
-
-            const filtered = {};
-            Object.keys(scheduleData).forEach(trackSlug => {
-                const track = scheduleData[trackSlug];
-                const filteredTalks = track.talks.filter(talk => 
-                    talk.title.toLowerCase().includes(searchTerm) ||
-                    talk.slug.toLowerCase().includes(searchTerm)
-                );
-                
-                if (filteredTalks.length > 0) {
-                    filtered[trackSlug] = {
-                        name: track.name,
-                        talks: filteredTalks
-                    };
-                }
-            });
-
-            talksByTrack = filtered;
-            renderTracks();
-            attachAttendanceListeners();
+            talksList.classList.toggle('hidden');
+            btn.textContent = isHidden ? 'Collapse' : 'Expand';
         }
 
         // Register/Join group
@@ -459,7 +627,6 @@
             localStorage.setItem('fosdem_group', group);
 
             try {
-                // Sign in anonymously if not already
                 if (!auth.currentUser) {
                     const userCredential = await auth.signInAnonymously();
                     currentUser = userCredential.user;
@@ -467,19 +634,16 @@
                     currentUser = auth.currentUser;
                 }
                 
-                // Store nickname in the group
                 await database.ref(getPath(`users/${currentUser.uid}`)).set({
                     nickname: nickname,
                     lastSeen: firebase.database.ServerValue.TIMESTAMP
                 });
 
                 updateUI(nickname);
-
-                // Attach real-time listeners
-                attachAttendanceListeners();
+                initApp();
             } catch (error) {
                 console.error('Error registering:', error);
-                alert('Error joining group. Please try again.');
+                alert('Error joining group.');
             }
         }
 
@@ -503,21 +667,10 @@
             Object.keys(talksByTrack).forEach(trackSlug => {
                 talksByTrack[trackSlug].talks.forEach(talk => {
                     const goingRef = database.ref(getPath(`attendance/${talk.slug}/going`));
-                    const hereRef = database.ref(getPath(`attendance/${talk.slug}/here`));
-
-                    // Remove old listeners if any
                     goingRef.off();
-                    hereRef.off();
-
-                    // Listen for updates
                     goingRef.on('value', (snapshot) => {
                         updateAttendanceDisplay(talk.slug, 'going', snapshot.val());
                     });
-
-                    hereRef.on('value', (snapshot) => {
-                        updateAttendanceDisplay(talk.slug, 'here', snapshot.val());
-                    });
-
                     checkUserAttendance(talk.slug);
                 });
             });
@@ -526,21 +679,9 @@
         // Check user's current attendance status
         function checkUserAttendance(talkSlug) {
             if (!currentUser || !groupName) return;
-
             database.ref(getPath(`attendance/${talkSlug}/going/${currentUser.uid}`)).once('value', (snapshot) => {
                 const btn = document.getElementById(`going-${talkSlug}`);
-                if (btn) {
-                    if (snapshot.exists()) btn.classList.add('active');
-                    else btn.classList.remove('active');
-                }
-            });
-
-            database.ref(getPath(`attendance/${talkSlug}/here/${currentUser.uid}`)).once('value', (snapshot) => {
-                const btn = document.getElementById(`here-${talkSlug}`);
-                if (btn) {
-                    if (snapshot.exists()) btn.classList.add('active');
-                    else btn.classList.remove('active');
-                }
+                if (btn) btn.classList.toggle('active', snapshot.exists());
             });
         }
 
@@ -549,17 +690,7 @@
             const container = document.getElementById(`attendance-${talkSlug}`);
             if (!container) return;
 
-            const goingRef = database.ref(getPath(`attendance/${talkSlug}/going`));
-            const hereRef = database.ref(getPath(`attendance/${talkSlug}/here`));
-            
-            const [goingSnap, hereSnap] = await Promise.all([
-                goingRef.once('value'),
-                hereRef.once('value')
-            ]);
-
-            const goingData = goingSnap.val() || {};
-            const hereData = hereSnap.val() || {};
-
+            const goingData = data || {};
             let html = '';
 
             if (Object.keys(goingData).length > 0) {
@@ -573,19 +704,6 @@
                 const display = nicknames.map(name => `<span class="going">${name}</span>`).join('');
                 html += `<strong>Going:</strong> ${display} `;
             }
-
-            if (Object.keys(hereData).length > 0) {
-                const userIds = Object.keys(hereData);
-                const nicknames = await Promise.all(
-                    userIds.map(async (uid) => {
-                        const userSnap = await database.ref(getPath(`users/${uid}/nickname`)).once('value');
-                        return userSnap.val() || 'Anonymous';
-                    })
-                );
-                const display = nicknames.map(name => `<span class="here">${name}</span>`).join('');
-                html += `<strong>Here:</strong> ${display}`;
-            }
-
             container.innerHTML = html;
         }
 
@@ -598,23 +716,14 @@
 
             const ref = database.ref(getPath(`attendance/${talkSlug}/${type}/${currentUser.uid}`));
             const snapshot = await ref.once('value');
-            const btn = document.getElementById(`${type}-${talkSlug}`);
-
             if (snapshot.exists()) {
                 await ref.remove();
-                btn.classList.remove('active');
             } else {
                 await ref.set(true);
-                btn.classList.add('active');
-                
-                const otherType = type === 'going' ? 'here' : 'going';
-                await database.ref(getPath(`attendance/${talkSlug}/${otherType}/${currentUser.uid}`)).remove();
-                const otherBtn = document.getElementById(`${otherType}-${talkSlug}`);
-                if (otherBtn) otherBtn.classList.remove('active');
             }
         }
 
-        // Check if user is already authenticated
+        // Auth state change
         auth.onAuthStateChanged((user) => {
             if (user) {
                 currentUser = user;
@@ -625,7 +734,7 @@
                         const nickname = snapshot.val();
                         if (nickname) {
                             updateUI(nickname);
-                            if (scheduleData) attachAttendanceListeners();
+                            if (scheduleData) initApp();
                         }
                     });
                 }
