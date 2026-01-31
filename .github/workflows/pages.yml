@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"]
+    branches: ["master"]
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -29,17 +29,14 @@ jobs:
 
       - name: Build site
         run: |
-          # Add your build commands here
-          # Example: npm install && npm run build
-          # For static sites, you can skip this step
-
           # Create output directory
           mkdir -p _site
 
-          # Copy your built files to _site/
-          # Example: cp -r dist/* _site/
-          # For now, copying everything as example:
-          cp -r * _site/ 2>/dev/null || true
+          # Copy static files to _site/
+          cp index.html _site/
+          cp xml.xml _site/
+          cp README.md _site/
+          cp firebase-rules.json _site/
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
