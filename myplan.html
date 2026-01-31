@@ -157,10 +157,11 @@
                 renderMyPlan();
                 document.getElementById('loading').classList.add('hidden');
             } catch (error) {
+                console.error('Init error:', error);
                 document.getElementById('loading').innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">⚠️</div>
-                        <div class="empty-state-text">Error loading</div>
+                        <div class="empty-state-text">Error: ${error.message || error}</div>
                     </div>
                 `;
             }

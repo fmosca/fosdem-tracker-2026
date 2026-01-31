@@ -460,11 +460,11 @@
         if (userData && userData.nickname === savedNickname) {
             state.currentUser = { uid: userId };
             state.nickname = savedNickname;
-            notifyCallbacks('onUserChange', { uid, nickname: savedNickname, group: savedGroup });
+            notifyCallbacks('onUserChange', { uid: userId, nickname: savedNickname, group: savedGroup });
             if (state.scheduleData) {
                 initRealtimeListeners();
             }
-            return { uid, nickname: savedNickname, group: savedGroup };
+            return { uid: userId, nickname: savedNickname, group: savedGroup };
         }
 
         return null;
