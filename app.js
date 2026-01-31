@@ -134,7 +134,19 @@
         });
     }
 
-    // Simple hash for PIN (not cryptographically secure, but prevents casual snooping)
+    // Simple hash for nickname to create consistent ID
+    function generateUserId(group, nickname) {
+        const str = `${group}:${nickname}`.toLowerCase();
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return `user_${Math.abs(hash).toString(16)}`;
+    }
+
+    // Simple hash for PIN
     function hashPin(pin) {
         let hash = 0;
         const str = pin + state.groupName; // Salt with group name
@@ -148,40 +160,26 @@
 
     // Find existing user by nickname in a group
     async function findUserByNickname(group, nickname) {
-        const tempPath = `groups/${group}/users`;
-        const snapshot = await database.ref(tempPath).once('value');
-        const users = snapshot.val() || {};
+        const userId = generateUserId(group, nickname);
+        const snapshot = await database.ref(`groups/${group}/users/${userId}`).once('value');
+        const userData = snapshot.val();
 
-        for (const [uid, userData] of Object.entries(users)) {
-            if (userData.nickname === nickname) {
-                return { uid, ...userData };
-            }
+        if (userData) {
+            return { uid: userId, ...userData };
         }
         return null;
-    }
-
-    // Check if this is a returning user (same device/browser)
-    function getSavedUserId(group, nickname) {
-        const key = `fosdem_uid_${group}_${nickname.toLowerCase()}`;
-        return localStorage.getItem(key);
-    }
-
-    // Save user ID for future sessions
-    function saveUserId(group, nickname, uid) {
-        const key = `fosdem_uid_${group}_${nickname.toLowerCase()}`;
-        localStorage.setItem(key, uid);
     }
 
     // Verify PIN for existing user
     async function verifyPin(uid, pin) {
         const snapshot = await database.ref(getPath(`users/${uid}/pinHash`)).once('value');
         const storedHash = snapshot.val();
-        if (!storedHash) return false; // Old user without PIN
+        if (!storedHash) return true; // Old user without PIN - allow
         return storedHash === hashPin(pin);
     }
 
     // Register/join a group
-    async function register(nickname, group, pin = null, existingUid = null) {
+    async function register(nickname, group, pin = null) {
         if (!nickname || !group) {
             throw new Error('Please enter both a nickname and a group secret');
         }
@@ -190,84 +188,57 @@
         nickname = nickname.trim();
         state.groupName = group;
 
-        // Check if nickname exists in group
+        // First, authenticate with Firebase (for database security rules)
+        if (!auth.currentUser) {
+            await auth.signInAnonymously();
+        }
+
+        // Generate consistent user ID from group + nickname
+        const userId = generateUserId(group, nickname);
+
+        // Check if user exists and verify PIN if needed
         const existingUser = await findUserByNickname(group, nickname);
 
         if (existingUser) {
-            // Nickname already taken
-            if (existingUid && existingUid === existingUser.uid) {
-                // Returning on same device - proceed
-            } else if (pin) {
-                // Verify PIN to reclaim identity
-                const valid = await verifyPin(existingUser.uid, pin);
+            // User exists - verify PIN
+            if (pin) {
+                const valid = await verifyPin(userId, pin);
                 if (!valid) {
-                    throw new Error('Incorrect PIN. This nickname is already taken.');
+                    throw new Error('Incorrect PIN');
                 }
-                // PIN correct - will reclaim this identity
-            } else {
-                // Ask for PIN
-                throw new Error('PIN_REQUIRED');
             }
-
-            // Reclaim existing identity
-            state.currentUser = { uid: existingUser.uid };
-            state.nickname = nickname;
-            localStorage.setItem('fosdem_group', group);
-            saveUserId(group, nickname, existingUser.uid);
-
             // Update last seen
-            await database.ref(getPath(`users/${existingUser.uid}`)).update({
+            await database.ref(getPath(`users/${userId}`)).update({
                 lastSeen: firebase.database.ServerValue.TIMESTAMP
             });
-
-            notifyCallbacks('onUserChange', { uid: existingUser.uid, nickname, group });
-
-            if (state.scheduleData) {
-                initRealtimeListeners();
-            }
-
-            return { uid: existingUser.uid, nickname, group, existing: true };
-        }
-
-        // New user - create account
-        localStorage.setItem('fosdem_group', group);
-
-        try {
-            if (!auth.currentUser) {
-                const userCredential = await auth.signInAnonymously();
-                state.currentUser = userCredential.user;
-            } else {
-                state.currentUser = auth.currentUser;
-            }
-
-            state.nickname = nickname;
-
-            // Save user data with PIN hash if provided
+        } else {
+            // New user - create with PIN
             const userData = {
                 nickname: nickname,
-                lastSeen: firebase.database.ServerValue.TIMESTAMP
+                lastSeen: firebase.database.ServerValue.TIMESTAMP,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
             };
 
             if (pin) {
                 userData.pinHash = hashPin(pin);
             }
 
-            await database.ref(getPath(`users/${state.currentUser.uid}`)).set(userData);
-
-            // Save UID for future sessions
-            saveUserId(group, nickname, state.currentUser.uid);
-
-            notifyCallbacks('onUserChange', { uid: state.currentUser.uid, nickname, group });
-
-            if (state.scheduleData) {
-                initRealtimeListeners();
-            }
-
-            return { uid: state.currentUser.uid, nickname, group, existing: false };
-        } catch (error) {
-            console.error('Error registering:', error);
-            throw error;
+            await database.ref(getPath(`users/${userId}`)).set(userData);
         }
+
+        // Set state
+        state.currentUser = { uid: userId };
+        state.nickname = nickname;
+        localStorage.setItem('fosdem_group', group);
+        localStorage.setItem('fosdem_nickname', nickname);
+
+        notifyCallbacks('onUserChange', { uid: userId, nickname, group });
+
+        if (state.scheduleData) {
+            initRealtimeListeners();
+        }
+
+        return { uid: userId, nickname, group, existing: !!existingUser };
     }
 
     // Logout
@@ -470,20 +441,30 @@
     // Restore session from localStorage
     async function restoreSession() {
         const savedGroup = localStorage.getItem('fosdem_group');
-        if (!savedGroup || !auth.currentUser) return null;
+        const savedNickname = localStorage.getItem('fosdem_nickname');
+
+        if (!savedGroup || !savedNickname) return null;
+
+        // First authenticate with Firebase
+        if (!auth.currentUser) {
+            await auth.signInAnonymously();
+        }
 
         state.groupName = savedGroup;
-        const snapshot = await database.ref(getPath(`users/${auth.currentUser.uid}/nickname`)).once('value');
-        const nickname = snapshot.val();
+        const userId = generateUserId(savedGroup, savedNickname);
 
-        if (nickname) {
-            state.currentUser = auth.currentUser;
-            state.nickname = nickname;
-            notifyCallbacks('onUserChange', { uid: auth.currentUser.uid, nickname, group: savedGroup });
+        // Verify user still exists
+        const snapshot = await database.ref(getPath(`users/${userId}`)).once('value');
+        const userData = snapshot.val();
+
+        if (userData && userData.nickname === savedNickname) {
+            state.currentUser = { uid: userId };
+            state.nickname = savedNickname;
+            notifyCallbacks('onUserChange', { uid, nickname: savedNickname, group: savedGroup });
             if (state.scheduleData) {
                 initRealtimeListeners();
             }
-            return { uid: auth.currentUser.uid, nickname, group: savedGroup };
+            return { uid, nickname: savedNickname, group: savedGroup };
         }
 
         return null;
@@ -526,8 +507,7 @@
         on,
         checkSavedSession,
         restoreSession,
-        findUserByNickname,
-        getSavedUserId
+        findUserByNickname
     };
 
     window.FosdemApp = FosdemApp;
