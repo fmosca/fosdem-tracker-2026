@@ -125,7 +125,7 @@
             }
 
             // Exclude self from count
-            const others = attendees.filter(a => a.uid !== FosdemApp.currentUser.uid);
+            const others = attendees.filter(a => FosdemApp.currentUser && a.uid !== FosdemApp.currentUser.uid);
             container.innerHTML = `
                 <span class="attendance-label">+${others.length} other${others.length > 1 ? 's' : ''}</span>
                 <div class="attendance-tags">
