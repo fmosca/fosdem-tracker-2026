@@ -70,57 +70,55 @@ The rules allow:
 - Authenticated users to write their own user data
 - Authenticated users to mark attendance
 
-### 7. Host the App
+### 7. Host the App (GitHub Pages)
 
-You can host this on any static hosting service:
+This repository is pre-configured with a GitHub Actions workflow for automatic deployment to GitHub Pages.
 
-**Option A: GitHub Pages**
-1. Create a GitHub repository
-2. Upload `index.html` and `xml.xml`
-3. Enable GitHub Pages in repository settings
-4. Access via `https://yourusername.github.io/repo-name/`
+1. **Push your changes:** Once you've updated `index.html` with your Firebase config, commit and push to the `master` branch.
+2. **Monitor Deployment:** Go to the **Actions** tab in your GitHub repository to see the "Deploy to GitHub Pages" workflow running.
+3. **Configure Pages Source:**
+    - Go to **Settings** → **Pages**.
+    - Under **Build and deployment** → **Source**, ensure **GitHub Actions** is selected.
+4. **Access your site:** Your app will be available at `https://your-username.github.io/fosdem-tracker-2026/`.
 
-**Option B: Netlify**
-1. Go to [Netlify](https://www.netlify.com/)
-2. Drag and drop the folder containing `index.html` and `xml.xml`
-3. Your app is live!
+### 8. Security: Restrict your API Key
 
-**Option C: Cloudflare Pages**
-1. Go to [Cloudflare Pages](https://pages.cloudflare.com/)
-2. Connect your GitHub repo or upload files
-3. Deploy
+To prevent other people from using your Firebase API key on their own sites, you should restrict it to your domain:
 
-**Option D: Firebase Hosting** (if you want everything in one place)
-1. Install Firebase CLI: `npm install -g firebase-tools`
-2. Run `firebase init hosting`
-3. Set public directory to current directory
-4. Run `firebase deploy --only hosting`
+1. Go to the [Google Cloud Credentials page](https://console.cloud.google.com/apis/credentials).
+2. Select your project.
+3. Click on the **"Browser key (auto-created by Firebase)"**.
+4. Under **Website restrictions**, select **Websites**.
+5. Add your domain: `https://your-username.github.io/*`.
+6. (Optional) Under **API restrictions**, restrict the key to only use `Identity Toolkit API`, `Google Cloud Realtime Database`, and `Firebase Installations API`.
+7. Click **Save**.
 
 ## Usage
 
-1. Open the app in your browser
-2. Enter a nickname and click "Register"
-3. Browse talks by track
-4. Click "Going" to mark a talk you plan to attend
-5. Click "Here" when you're actually at the talk
-6. See who else is going/here in real-time!
+1. **Join a Group:** Open the app and enter a **Group Password / Secret** and your **Nickname**.
+    - The Group Secret acts as a private room. Only people who enter the exact same secret will see each other's data.
+2. **Browse & Search:** Use the search bar or browse by track.
+3. **Mark Attendance:** Click "Going" on any talk you plan to attend.
+4. **Sidebar Navigation:**
+    - **My Talks:** See a quick list of everything you've marked as "Going".
+    - **Users:** See other people in your group. Click a user to filter the schedule to only show talks they are attending.
+5. **Clear Filters:** Use the "Show All Talks" button in the sidebar to reset the view.
 
 ## Data Structure
 
-The app stores data in Firebase Realtime Database:
+The app stores data in Firebase Realtime Database using a nested group structure:
 
 ```
-users/
-  {uid}/
-    nickname: string
-    lastSeen: timestamp
-
-attendance/
-  {talkSlug}/
-    going/
-      {uid}: true
-    here/
-      {uid}: true
+groups/
+  {sharedSecret}/
+    users/
+      {uid}/
+        nickname: string
+        lastSeen: timestamp
+    attendance/
+      {talkSlug}/
+        going/
+          {uid}: true
 ```
 
 ## Notes
