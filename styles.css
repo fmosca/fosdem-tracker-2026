@@ -551,6 +551,23 @@ body {
     display: none !important;
 }
 
+.error-message {
+    color: var(--danger);
+    font-size: 13px;
+    margin-top: 12px;
+    text-align: center;
+}
+
+.entry-input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+.entry-input[type="number"]::-webkit-outer-spin-button,
+.entry-input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
 /* ========== DESKTOP OPTIMIZATIONS ========== */
 @media (min-width: 768px) {
     #mainView {

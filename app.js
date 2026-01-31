@@ -134,13 +134,102 @@
         });
     }
 
+    // Simple hash for PIN (not cryptographically secure, but prevents casual snooping)
+    function hashPin(pin) {
+        let hash = 0;
+        const str = pin + state.groupName; // Salt with group name
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return hash.toString(16);
+    }
+
+    // Find existing user by nickname in a group
+    async function findUserByNickname(group, nickname) {
+        const tempPath = `groups/${group}/users`;
+        const snapshot = await database.ref(tempPath).once('value');
+        const users = snapshot.val() || {};
+
+        for (const [uid, userData] of Object.entries(users)) {
+            if (userData.nickname === nickname) {
+                return { uid, ...userData };
+            }
+        }
+        return null;
+    }
+
+    // Check if this is a returning user (same device/browser)
+    function getSavedUserId(group, nickname) {
+        const key = `fosdem_uid_${group}_${nickname.toLowerCase()}`;
+        return localStorage.getItem(key);
+    }
+
+    // Save user ID for future sessions
+    function saveUserId(group, nickname, uid) {
+        const key = `fosdem_uid_${group}_${nickname.toLowerCase()}`;
+        localStorage.setItem(key, uid);
+    }
+
+    // Verify PIN for existing user
+    async function verifyPin(uid, pin) {
+        const snapshot = await database.ref(getPath(`users/${uid}/pinHash`)).once('value');
+        const storedHash = snapshot.val();
+        if (!storedHash) return false; // Old user without PIN
+        return storedHash === hashPin(pin);
+    }
+
     // Register/join a group
-    async function register(nickname, group) {
+    async function register(nickname, group, pin = null, existingUid = null) {
         if (!nickname || !group) {
             throw new Error('Please enter both a nickname and a group secret');
         }
 
+        // Normalize nickname
+        nickname = nickname.trim();
         state.groupName = group;
+
+        // Check if nickname exists in group
+        const existingUser = await findUserByNickname(group, nickname);
+
+        if (existingUser) {
+            // Nickname already taken
+            if (existingUid && existingUid === existingUser.uid) {
+                // Returning on same device - proceed
+            } else if (pin) {
+                // Verify PIN to reclaim identity
+                const valid = await verifyPin(existingUser.uid, pin);
+                if (!valid) {
+                    throw new Error('Incorrect PIN. This nickname is already taken.');
+                }
+                // PIN correct - will reclaim this identity
+            } else {
+                // Ask for PIN
+                throw new Error('PIN_REQUIRED');
+            }
+
+            // Reclaim existing identity
+            state.currentUser = { uid: existingUser.uid };
+            state.nickname = nickname;
+            localStorage.setItem('fosdem_group', group);
+            saveUserId(group, nickname, existingUser.uid);
+
+            // Update last seen
+            await database.ref(getPath(`users/${existingUser.uid}`)).update({
+                lastSeen: firebase.database.ServerValue.TIMESTAMP
+            });
+
+            notifyCallbacks('onUserChange', { uid: existingUser.uid, nickname, group });
+
+            if (state.scheduleData) {
+                initRealtimeListeners();
+            }
+
+            return { uid: existingUser.uid, nickname, group, existing: true };
+        }
+
+        // New user - create account
         localStorage.setItem('fosdem_group', group);
 
         try {
@@ -153,10 +242,20 @@
 
             state.nickname = nickname;
 
-            await database.ref(getPath(`users/${state.currentUser.uid}`)).set({
+            // Save user data with PIN hash if provided
+            const userData = {
                 nickname: nickname,
                 lastSeen: firebase.database.ServerValue.TIMESTAMP
-            });
+            };
+
+            if (pin) {
+                userData.pinHash = hashPin(pin);
+            }
+
+            await database.ref(getPath(`users/${state.currentUser.uid}`)).set(userData);
+
+            // Save UID for future sessions
+            saveUserId(group, nickname, state.currentUser.uid);
 
             notifyCallbacks('onUserChange', { uid: state.currentUser.uid, nickname, group });
 
@@ -164,7 +263,7 @@
                 initRealtimeListeners();
             }
 
-            return { uid: state.currentUser.uid, nickname, group };
+            return { uid: state.currentUser.uid, nickname, group, existing: false };
         } catch (error) {
             console.error('Error registering:', error);
             throw error;
@@ -426,7 +525,9 @@
         getOtherUsers,
         on,
         checkSavedSession,
-        restoreSession
+        restoreSession,
+        findUserByNickname,
+        getSavedUserId
     };
 
     window.FosdemApp = FosdemApp;

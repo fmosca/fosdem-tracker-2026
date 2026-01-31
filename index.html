@@ -13,12 +13,13 @@
     <div id="entryView" class="view active">
         <div class="entry-card">
             <div class="entry-logo">🇧🇪</div>
-            <h1 class="entry-title">FOSDEM 2026</h1>
-            <p class="entry-subtitle">Coordinate with your group</p>
+            <h1 class="entry-title" id="entryTitle">FOSDEM 2026</h1>
+            <p class="entry-subtitle" id="entrySubtitle">Coordinate with your group</p>
             <form class="entry-form" id="entryForm">
                 <input type="text" class="entry-input" id="groupNameInput" placeholder="Group Password / Secret" maxlength="30" required>
                 <input type="text" class="entry-input" id="nicknameInput" placeholder="Your nickname" maxlength="20" required>
-                <button type="submit" class="btn-primary">Join Group</button>
+                <input type="number" class="entry-input hidden" id="pinInput" placeholder="Enter your 4-digit PIN" maxlength="4" minlength="4">
+                <button type="submit" class="btn-primary" id="entryButton">Join Group</button>
             </form>
             <p id="entryError" class="error-message hidden"></p>
         </div>
@@ -139,21 +140,82 @@
         // Entry Form
         const entryForm = document.getElementById('entryForm');
         const entryError = document.getElementById('entryError');
+        const entryTitle = document.getElementById('entryTitle');
+        const entrySubtitle = document.getElementById('entrySubtitle');
+        const pinInput = document.getElementById('pinInput');
+        const entryButton = document.getElementById('entryButton');
+
+        let pendingRegistration = null; // Stores { nickname, group } when PIN is needed
 
         entryForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            entryError.classList.add('hidden');
 
             const nickname = document.getElementById('nicknameInput').value.trim();
             const group = document.getElementById('groupNameInput').value.trim();
+            const pin = pinInput.value.trim();
 
+            // If PIN is visible, we're in reclaim mode
+            if (!pinInput.classList.contains('hidden') && pin) {
+                try {
+                    await FosdemApp.register(nickname, group, pin);
+                    showMainApp();
+                } catch (error) {
+                    entryError.textContent = error.message || 'Incorrect PIN';
+                    entryError.classList.remove('hidden');
+                }
+                return;
+            }
+
+            // Check if nickname already exists
+            const existingUser = await FosdemApp.findUserByNickname(group, nickname);
+            const savedUid = FosdemApp.getSavedUserId(group, nickname);
+
+            if (existingUser && existingUser.uid !== savedUid) {
+                // Nickname exists and not the same device - need PIN to reclaim
+                pendingRegistration = { nickname, group };
+                entryTitle.textContent = 'Welcome back!';
+                entrySubtitle.textContent = 'Enter your PIN to reclaim your identity';
+                pinInput.classList.remove('hidden');
+                pinInput.required = true;
+                pinInput.focus();
+                entryButton.textContent = 'Verify & Join';
+                return;
+            }
+
+            // New user or returning on same device
             try {
-                await FosdemApp.register(nickname, group);
-                showMainApp();
+                await FosdemApp.register(nickname, group, null, savedUid);
+
+                // If new user, show PIN setup dialog
+                if (!existingUser) {
+                    showPinSetup(nickname, group);
+                } else {
+                    showMainApp();
+                }
             } catch (error) {
                 entryError.textContent = error.message || 'Error joining group';
                 entryError.classList.remove('hidden');
             }
         });
+
+        function showPinSetup(nickname, group) {
+            // Show a simple PIN setup using browser's prompt
+            // In production, you'd want a proper modal
+            const pin = prompt('Choose a 4-digit PIN to protect your identity\\n(You\\'ll need this to reclaim your nickname on another device):');
+
+            if (pin && pin.length >= 4) {
+                FosdemApp.register(nickname, group, pin).then(() => {
+                    showMainApp();
+                }).catch(err => {
+                    alert('Error setting PIN: ' + err.message);
+                    showMainApp(); // Continue anyway
+                });
+            } else {
+                // User cancelled or entered invalid PIN - continue without it
+                showMainApp();
+            }
+        }
 
         function showMainApp() {
             showView('main');
